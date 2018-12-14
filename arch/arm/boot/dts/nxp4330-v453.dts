@@ -1,0 +1,67 @@
+/*
+ * 
+ * 
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "nxp4330.dtsi"
+
+/{
+	memory{
+		device_type = "memory";
+		reg = <0x40000000 0x40000000>;
+	};
+	
+	soc{
+		#include "s5p4418-pinctrl.dtsi"
+		clocks{
+			uart0:uart@c00a9000 { clock-frequency = <47500000>; };
+		};
+		
+		serial0:serial@c00a1000{
+			status = "okay";
+		};
+		
+		serial1:serial@c00a0000{
+			status = "okay";
+		};
+		
+		serial2:serial@c00a2000{
+			status = "okay";
+		};
+			
+		ehci@c0030000 {
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		ohci@c0020000 {
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		nexell_usbphy: nexell-usbphy@c0012000 {
+			status = "okay";
+		};
+
+		dwc2otg@c0040000 {
+			status = "okay";
+		};
+	};
+};

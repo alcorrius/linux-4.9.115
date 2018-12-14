@@ -1706,6 +1706,14 @@ config RTC_DRV_PIC32
 	   This driver can also be built as a module. If so, the module
 	   will be called rtc-pic32
 
+
+config RTC_DRV_NX
+	tristate "Nexell RTC"
+	depends on ARCH_S5P4418 || ARCH_S5P6818
+	help
+	  Driver for the internal RTC (Realtime Clock) module found on
+	  Nexell's processor.
+	  
 comment "HID Sensor RTC drivers"
 
 config RTC_DRV_HID_SENSOR_TIME

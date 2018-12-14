@@ -1763,7 +1763,9 @@ static size_t log_output(int facility, int level, enum log_flags lflags, const c
 	/* Store it in the record log */
 	return log_store(facility, level, lflags, 0, dict, dictlen, text, text_len);
 }
-
+#ifdef CONFIG_DEBUG_LL
+	extern void printascii(char *);
+#endif
 asmlinkage int vprintk_emit(int facility, int level,
 			    const char *dict, size_t dictlen,
 			    const char *fmt, va_list args)
@@ -1835,6 +1837,10 @@ asmlinkage int vprintk_emit(int facility, int level,
 		printed_len += log_store(0, 2, LOG_PREFIX|LOG_NEWLINE, 0,
 					 NULL, 0, textbuf, text_len);
 	}
+	
+#ifdef CONFIG_DEBUG_LL
+	printascii(text);
+#endif
 
 	/*
 	 * The printf needs to come first; we need the syslog

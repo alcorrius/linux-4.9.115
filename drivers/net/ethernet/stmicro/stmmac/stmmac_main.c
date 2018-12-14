@@ -798,10 +798,14 @@ static void stmmac_adjust_link(struct net_device *dev)
 		 */
 		phydev->irq = PHY_IGNORE_INTERRUPT;
 	else
-		/* At this stage, init the EEE if supported.
+		/* At this stage, init the EEE if supported.s
 		 * Never called in case of fixed_link.
 		 */
-		priv->eee_enabled = stmmac_eee_init(priv);
+#if defined(CONFIG_ARCH_S5P6818) || defined(CONFIG_ARCH_S5P4418)
+	priv->eee_enabled = false;
+#else
+	priv->eee_enabled = stmmac_eee_init(priv);
+#endif
 }
 
 /**
