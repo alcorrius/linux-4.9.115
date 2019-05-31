@@ -1313,6 +1313,15 @@ choice
 		  options; the platform specific options are deprecated
 		  and will be soon removed.
 
+	config DEBUG_NXP2120_UART
+		depends on CPU_NXP2120
+		bool "Kernel low-level debugging Nexell NXP2120 UART"
+		help
+			Say Y here if you want the debug print routines to direct
+			their output to DEBUG UARTn. The port must have been initialised
+			by the boot-loader before use.
+			
+		  
 endchoice
 
 config DEBUG_AT91_UART
@@ -1432,6 +1441,7 @@ config DEBUG_LL_INCLUDE
 	default "debug/bcm63xx.S" if DEBUG_BCM63XX_UART
 	default "debug/digicolor.S" if DEBUG_DIGICOLOR_UA0
 	default "debug/brcmstb.S" if DEBUG_BRCMSTB_UART
+	default "debug/nxp2120.S" if DEBUG_NXP2120_UART
 	default "mach/debug-macro.S"
 
 # Compatibility options for PL01x
@@ -1546,6 +1556,7 @@ config DEBUG_UART_PHYS
 	default 0xffffee00 if DEBUG_AT91_SAM9263_DBGU
 	default 0xfffff200 if DEBUG_AT91_RM9200_DBGU
 	default 0xfffff700 if ARCH_IOP33X
+	default 0xc0016000 if DEBUG_NXP2120_UART	
 	depends on ARCH_EP93XX || \
 	        DEBUG_LL_UART_8250 || DEBUG_LL_UART_PL01X || \
 		DEBUG_LL_UART_EFM32 || \
@@ -1559,7 +1570,7 @@ config DEBUG_UART_PHYS
 		DEBUG_S3C64XX_UART || \
 		DEBUG_BCM63XX_UART || DEBUG_ASM9260_UART || \
 		DEBUG_SIRFSOC_UART || DEBUG_DIGICOLOR_UA0 || \
-		DEBUG_AT91_UART
+		DEBUG_AT91_UART 
 
 config DEBUG_UART_VIRT
 	hex "Virtual base address of debug UART"
@@ -1650,6 +1661,7 @@ config DEBUG_UART_VIRT
 	default 0xfefff700 if ARCH_IOP33X
 	default 0xff003000 if DEBUG_U300_UART
 	default 0xffd01000 if DEBUG_HIP01_UART
+	default 0xf0016000 if DEBUG_NXP2120_UART	
 	default DEBUG_UART_PHYS if !MMU
 	depends on DEBUG_LL_UART_8250 || DEBUG_LL_UART_PL01X || \
 		DEBUG_UART_8250 || DEBUG_UART_PL01X || DEBUG_MESON_UARTAO || \
@@ -1712,12 +1724,12 @@ config DEBUG_UNCOMPRESS
 config UNCOMPRESS_INCLUDE
 	string
 	default "debug/uncompress.h" if ARCH_MULTIPLATFORM || ARCH_MSM || \
-					PLAT_SAMSUNG || ARM_SINGLE_ARMV7M
+					PLAT_SAMSUNG || ARM_SINGLE_ARMV7M || ARCH_NEXELL
 	default "mach/uncompress.h"
 
 config EARLY_PRINTK
 	bool "Early printk"
-	depends on DEBUG_LL
+	depends on DEBUG_LL || DEBUG_NXP2120_UART
 	help
 	  Say Y here if you want to have an early console using the
 	  kernel low-level debugging functions. Add earlyprintk to your

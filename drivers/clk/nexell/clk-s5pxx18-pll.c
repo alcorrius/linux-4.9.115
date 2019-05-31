@@ -341,7 +341,7 @@ static void nx_pll_set_rate(int PLL, int P, int M, int S, int K)
 	spin_unlock_irqrestore(&pll_lock, flags);
 }
 
-#if defined(CONFIG_ARCH_S5P4418)
+#if defined(CONFIG_ARCH_S5P4418) && defined(CONFIG_SECURE_REG_ACCESS)
 asmlinkage int __invoke_nexell_fn_smc(u32, u32, u32, u32);
 #endif
 
@@ -358,11 +358,13 @@ int nx_change_bus_freq(u32 pll_data)
 	return 0;
 #else
 	unsigned long flags;
-	int ret;
+	int ret=0;
 
+#if defined(CONFIG_SECURE_REG_ACCESS)
 	spin_lock_irqsave(&pll_lock, flags);
 	ret = __invoke_nexell_fn_smc(0x82000009, pll_data, 0, 0);
 	spin_unlock_irqrestore(&pll_lock, flags);
+#endif
 
 	return ret;
 #endif

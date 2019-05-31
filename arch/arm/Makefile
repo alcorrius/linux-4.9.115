@@ -223,6 +223,7 @@ machine-$(CONFIG_ARCH_ZX)		+= zx
 machine-$(CONFIG_ARCH_ZYNQ)		+= zynq
 machine-$(CONFIG_PLAT_SPEAR)		+= spear
 machine-$(CONFIG_ARCH_S5P4418)		+= s5p4418
+machine-$(CONFIG_ARCH_NXP2120)		+= nxp2120
 
 # Platform directory name.  This list is sorted alphanumerically
 # by CONFIG_* macro name.

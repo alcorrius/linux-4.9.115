@@ -259,6 +259,86 @@ struct nx_gpio_reg_set {
 #define NR_ALIVE	6		/* number of alive pin */
 #define ALIVE_INDEX	(NR_GPIO_MODULE)
 
+#elif defined(CONFIG_PINCTRL_NXP2120)
+
+#define PAD_GPIO_A (0 * 32)
+#define PAD_GPIO_B (1 * 32)
+#define PAD_GPIO_C (2 * 32)
+#define PAD_GPIO_ALV (3 * 32)
+
+/* nxp2120 GPIO function number */
+
+#define ALT_NO_GPIO_A                                                          \
+	{                                                                      \
+		IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,    \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0,                                                  \
+	}
+
+#define ALT_NO_GPIO_B                                                          \
+	{                                                                      \
+		IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,    \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_2, IO_ALT_2, IO_ALT_1, IO_ALT_2, IO_ALT_1,          \
+		    IO_ALT_2, IO_ALT_1, IO_ALT_2, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1,                                                  \
+	}
+
+#define ALT_NO_GPIO_C                                                          \
+	{                                                                      \
+		IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,    \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1, IO_ALT_1,          \
+		    IO_ALT_1, IO_ALT_1, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0,                                                  \
+	}
+
+#define ALT_NO_ALIVE                                                           \
+	{                                                                      \
+		IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,    \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0, IO_ALT_0,          \
+		    IO_ALT_0,                                                  \
+	}	
+
+/* GPIO Module's Register List */
+struct nx_gpio_reg_set {
+	/* 0x00	: Output Register */
+	u32 GPIOxOUT;
+	/* 0x04	: Output Enable Register */
+	u32 GPIOxOUTENB;
+	/* 0x08	: Event Detect Mode Register */
+	u32 GPIOxDETMODE[2];
+	/* 0x10	: Interrupt Enable Register */
+	u32 GPIOxINTENB;
+	/* 0x14	: Event Detect Register */
+	u32 GPIOxDET;
+	/* 0x18	: PAD Status Register */
+	u32 GPIOxPAD;
+	/* 0x1C	: Pull Up Enable Register */
+	u32 GPIOxPUENB;
+	/* 0x20	: Alternate Function Select Register */
+	u32 GPIOxALTFN[2];
+	/* 0x28	: IntPend Detect Enable Register */
+	u32 GPIOxDETENB;
+};
+#define NUMBER_OF_GPIO_MODULE 3
+#define NR_GPIO_MODULE	3		/* number of gpio module */
+#define NR_ALIVE	4		/* number of alive pin */
+#define ALIVE_INDEX	(NR_GPIO_MODULE)
+
+
 #elif defined(CONFIG_PINCTRL_NXP5540)
 
 #define PAD_GPIO_A (0 * 32)

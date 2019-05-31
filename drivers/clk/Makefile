@@ -95,3 +95,4 @@ obj-$(CONFIG_ARCH_ZYNQ)			+= zynq/
 obj-$(CONFIG_ARCH_S5P6818)   		+= nexell/
 obj-$(CONFIG_ARCH_S5P4418)   		+= nexell/
 obj-$(CONFIG_ARCH_NXP5540)   		+= nexell/
+obj-$(CONFIG_ARCH_NXP2120)   		+= nexell/

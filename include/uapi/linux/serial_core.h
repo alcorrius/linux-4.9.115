@@ -270,4 +270,7 @@
 /* MPS2 UART */
 #define PORT_MPS2UART	116
 
+/* NXP2120 UART */
+#define PORT_NXP2120	117
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

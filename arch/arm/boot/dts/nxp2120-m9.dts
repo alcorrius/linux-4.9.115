@@ -1,0 +1,159 @@
+/*
+ * Copyright (C) 2019 I4VINE
+ * Author: Juyoung Ryu <jyryu@i4vine.com>	
+ * 
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+#include "nxp2120.dtsi"
+
+/{
+	chosen {
+	};
+	
+	memory {
+		device_type = "memory";
+		reg = <0x80000000 0x08000000>;/*0x10000000>;*/
+	};
+	
+	soc{
+		#include "nxp2120-pinctrl.dtsi"
+		
+		uart0: uart@C0016000 {
+			id = <0>;
+			status = "okay";
+		};
+		
+		uart1: uart@C0016080 {
+			id = <1>;
+			status = "okay";
+		};
+		
+		ehci: usb@C000D000 {
+			status = "okay";
+		};	
+		
+		audio: audio@C00D8000 {
+			status = "okay";
+		};
+		
+		mcus:mcus@C0015800 {
+			status = "okay";
+			static_0 {
+				bus_width = <8>;
+				tACS = <1>;
+				tCOS = <1>;
+				tACC = <6>;
+				tSACC = <6>;
+				tOCH = <1>;
+				tCAH = <1>;
+				wm   = <1>;
+				rb   = <0>;
+				wb   = <0>;                   
+			};
+		
+			static_1 {
+				bus_width = <16>;
+				tACS = <3>;
+				tCOS = <3>;
+				tACC = <16>;
+				tSACC = <16>;
+				tOCH = <3>;
+				tCAH = <3>;
+				wm   = <1>;
+				rb   = <0>;
+				wb   = <0>;
+			};
+	
+			nand {
+				bus_width = <8>;
+				tACS = <0>;
+				tCOS = <1>;
+				tACC = <7>;
+				tSACC = <7>;
+				tOCH = <1>;
+				tCAH = <1>;
+				wm   = <1>;
+				rb   = <0>;
+				wb   = <0>;
+			};
+		};
+
+		nand: nand@C001587C {
+			chip-delay = <15>;
+			ecc-size = <512>;
+			ecc-strength = <4>;
+			status = "okay";
+
+			partitions {
+				/* for256M nand */
+				compatible = "fixed-partitions";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				partition@0 {
+				        label = "bootloader";
+				        reg = <0x00000000 0x00100000>;
+				        read-only;
+				};
+				partition@100000 {
+				        label = "kernel";
+				        reg = <0x00100000 0x00500000>;
+				        read-only;
+				};
+				partition@600000 {
+				        label = "rootfs";
+				        reg = <0x00600000 0x00A00000>; /* 0x00400000 */
+				};
+				partition@1000000 {
+				        label = "userfs";
+				        reg = <0x01000000 0x0F000000>; /* 0x00A00000 */
+				};
+				/*partition@500000 {
+				        label = "rootfs";
+				        reg = <0x00600000 0x1FA00000>; // 0x00A00000 
+				};*/
+				/*partition@1000000 {
+				        label = "userfs";
+				        reg = <0x01000000 0x03000000>;
+				};
+				partition@4000000 {
+				        label = "local";
+				        reg = <0x04000000 0x03A00000>;
+				};
+				partition@7A00000 {
+				        label = "rollback";
+				        reg = <0x07A00000 0x03000000>;
+				};
+				partition@AA00000 {
+				        label = "data";
+				        reg = <0x0AA00000 0x15600000>;
+				};*/
+			};
+		};
+	};
+	
+	tim: tim@0 {
+		compatible = "nexell,nxp2120-tim";
+		status = "okay";
+		clksource = <0>;
+		clkevent = <1>;
+		timer =  <&timer0>, <&timer1>;
+		timer-names = "timer source", "timer event";
+	};
+
+
+
+};

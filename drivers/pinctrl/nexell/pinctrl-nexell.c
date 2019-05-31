@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2019 I4VINE
+ * Author: Juyoung Ryu <jyryu@i4vine.com>	
+ * Add NXP2120
+ *
  * Copyright (C) 2016  Nexell Co., Ltd.
  * Author: Bon-gyu, KOO <freestyle@nexell.co.kr>
  *
@@ -941,7 +945,7 @@ static int nexell_gpiolib_register(struct platform_device *pdev,
 		gc = &bank->gpio_chip;
 		gc->base = ctrl->base + bank->pin_base;
 		gc->ngpio = bank->nr_pins;
-		gc->dev = &pdev->dev;
+		//gc->dev = &pdev->dev;
 		gc->of_node = bank->of_node;
 		gc->label = bank->name;
 
@@ -1194,6 +1198,10 @@ static const struct of_device_id nexell_pinctrl_dt_match[] = {
 #ifdef CONFIG_PINCTRL_NXP5540
 	{ .compatible = "nexell,nxp5540-pinctrl",
 		.data = (void *)nxp5540_pin_ctrl },
+#endif
+#ifdef CONFIG_PINCTRL_NXP2120
+	{ .compatible = "nexell,nxp2120-pinctrl",
+		.data = (void *)nxp2120_pin_ctrl },
 #endif
 	{},
 };

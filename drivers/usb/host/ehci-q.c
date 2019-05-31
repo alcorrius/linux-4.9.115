@@ -277,6 +277,46 @@ ehci_urb_done(struct ehci_hcd *ehci, struct urb *urb, int status)
 #endif
 
 	usb_hcd_unlink_urb_from_ep(ehci_to_hcd(ehci), urb);
+
+	/* swpark add for nxp2120 usb host bug */
+#ifdef CONFIG_NXP2120_USB_BUGFIX
+	if (ehci->nxp2120_bugfix_count > 0) { //ehci->dw_flag_nxp2120_bugfix
+	    int i;
+	    for (i=0; i<MAX_NXP2120_BUGFIX_COUNT; i++) {
+	    	struct nxp2120_usb_bugfix *bugfix = &ehci->nxp2120_bugfix[i];
+	        if ((urb == bugfix->urb) && (bugfix->active != 0)) {
+#ifdef CONFIG_NXP2120_USB_BUGFIX_MSG
+		        printk(KERN_INFO  "Free: %p, 0x%x, %d %x\n", urb->transfer_buffer, urb->transfer_dma, bugfix->real_transfer_buffer_length, bugfix->org_transfer_dma);
+#endif
+		        //usb_free_coherent(urb->dev, bugfix->real_transfer_buffer_length, urb->transfer_buffer, urb->transfer_dma);
+		        bugfix->real_transfer_buffer_length = 0;
+		        bugfix->active = 0;
+		        urb->transfer_buffer = bugfix->org_transfer_buffer;
+		        urb->transfer_dma = bugfix->org_transfer_dma;
+		        ehci->nxp2120_bugfix_count--;
+#ifdef CONFIG_NXP2120_USB_BUGFIX_MSG
+		        //printk("<=== end bugfix\n");
+#endif
+                break;
+		    }
+		}
+	}
+#endif
+
+#if defined(CONFIG_NXP2120_NEW_USB_BUGFIX)
+	if (urb->bugfix.active == 0x55AA55AA) {
+		struct usb_hcd *hcd = ehci_to_hcd(ehci);
+		dma_free_coherent(hcd->self.controller, urb->bugfix.real_transfer_buffer_length, urb->transfer_buffer, urb->transfer_dma);
+		urb->transfer_buffer = urb->bugfix.org_transfer_buffer;
+		urb->transfer_dma = urb->bugfix.org_transfer_dma;
+
+		urb->bugfix.active = 0;
+#if defined(CONFIG_NXP2120_NEW_USB_BUGFIX_MSG)
+		printk("<=== end bugfix\n");
+#endif
+	}
+#endif
+
 	usb_hcd_giveback_urb(ehci_to_hcd(ehci), urb, status);
 }
 

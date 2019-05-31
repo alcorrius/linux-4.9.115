@@ -42,6 +42,11 @@
 	case PAD_GPIO_C:			\
 	case PAD_GPIO_D:			\
 	case PAD_GPIO_E
+#elif defined(CONFIG_PINCTRL_NXP2120)
+#define CASE_PAD_GPIOS				\
+	case PAD_GPIO_A:			\
+	case PAD_GPIO_B:			\
+	case PAD_GPIO_C
 #elif defined(CONFIG_PINCTRL_NXP5540)
 #define CASE_PAD_GPIOS				\
 	case PAD_GPIO_A:			\
@@ -95,7 +100,7 @@ u32 nx_gpio_getbit2(u32 value, u32 bit)
 {
 	return (u32)((u32)(value >> (bit * 2)) & 3UL);
 }
-
+#ifndef CONFIG_PINCTRL_NXP2120
 bool nx_gpio_open_module(u32 idx)
 {
 	struct nx_gpio_reg_set *p_register;
@@ -110,7 +115,7 @@ bool nx_gpio_open_module(u32 idx)
 
 	return true;
 }
-
+#endif
 void nx_gpio_set_output_enable(u32 idx, u32 bitnum, bool enable)
 {
 	struct nx_gpio_reg_set *p_register;
@@ -173,7 +178,7 @@ bool nx_gpio_get_input_value(u32 idx, u32 bitnum)
 
 	return nx_gpio_getbit(readl(&p_register->GPIOxPAD), bitnum);
 }
-
+#ifndef CONFIG_PINCTRL_NXP2120
 void nx_gpio_set_pull_select(u32 idx, u32 bitnum, bool enable)
 {
 	nx_gpio_setbit(
@@ -210,7 +215,7 @@ void nx_gpio_set_pull_mode(u32 idx, u32 bitnum, int mode)
 			       bitnum, true);
 	}
 }
-
+#endif
 void nx_gpio_set_pad_function(u32 idx, u32 bitnum, int padfunc)
 {
 	struct nx_gpio_reg_set *p_register;
@@ -230,7 +235,7 @@ int nx_gpio_get_pad_function(u32 idx, u32 bitnum)
 	return nx_gpio_getbit2(
 	    readl(&p_register->GPIOxALTFN[bitnum / 16]), bitnum % 16);
 }
-
+#ifndef CONFIG_PINCTRL_NXP2120
 void nx_gpio_set_slew(u32 idx, u32 bitnum, bool enable)
 {
 	struct nx_gpio_reg_set *p_register;
@@ -327,7 +332,28 @@ int nx_gpio_get_pull_enable(u32 idx, u32 bitnum)
 	else
 		return (int)(nx_gpio_pull_off);
 }
+#else
 
+void nx_gpio_set_drive_strength(u32 idx, u32 bitnum, int drvstrength)
+{
+
+}
+
+int nx_gpio_get_drive_strength(u32 idx, u32 bitnum)
+{
+	return 0;
+}
+/*
+void nx_gpio_set_pull_enable(u32 idx, u32 bitnum, int pullsel)
+{
+
+}
+int nx_gpio_get_pull_enable(u32 idx, u32 bitnum)
+{
+	return 0;
+}
+*/
+#endif
 #ifdef CONFIG_PINCTRL_S5PXX18
 void nx_gpio_set_input_mux_select0(u32 idx, u32 value)
 {
@@ -420,8 +446,10 @@ void nx_gpio_set_interrupt_mode(u32 idx, u32 bitnum, int irqmode)
 
 	nx_gpio_setbit2(&p_register->GPIOxDETMODE[bitnum / 16],
 			bitnum % 16, (u32)irqmode & 0x03);
+#ifndef CONFIG_PINCTRL_NXP2120
 	nx_gpio_setbit(&p_register->GPIOxDETMODEEX, bitnum,
 		       (u32)(irqmode >> 2));
+#endif
 }
 
 int nx_gpio_get_interrupt_mode(u32 idx, u32 bitnum)
@@ -433,8 +461,10 @@ int nx_gpio_get_interrupt_mode(u32 idx, u32 bitnum)
 
 	regvalue = nx_gpio_getbit2(
 	    readl(&p_register->GPIOxDETMODE[bitnum / 16]), bitnum % 16);
+#ifndef CONFIG_PINCTRL_NXP2120	
 	regvalue |=
 	    (nx_gpio_getbit(readl(&p_register->GPIOxDETMODEEX), bitnum) << 2);
+#endif	    
 
 	return regvalue;
 }
@@ -716,6 +746,12 @@ const unsigned char s5pxx18_pio_fn_no[][GPIO_NUM_PER_BANK] = {
 	ALT_NO_GPIO_A, ALT_NO_GPIO_B, ALT_NO_GPIO_C,
 	ALT_NO_GPIO_D, ALT_NO_GPIO_E, ALT_NO_ALIVE,
 };
+#elif defined(CONFIG_PINCTRL_NXP2120)
+const unsigned char s5pxx18_pio_fn_no[][GPIO_NUM_PER_BANK] = {
+	ALT_NO_GPIO_A, ALT_NO_GPIO_B, ALT_NO_GPIO_C,
+	ALT_NO_ALIVE,
+};
+
 #elif defined(CONFIG_PINCTRL_NXP5540)
 const unsigned char s5pxx18_pio_fn_no[][GPIO_NUM_PER_BANK] = {
 	ALT_NO_GPIO_A, ALT_NO_GPIO_B, ALT_NO_GPIO_C,
@@ -847,11 +883,13 @@ void nx_soc_gpio_set_io_pull(unsigned int io, int val)
 	pr_debug("%s (%d.%02d) sel:%d\n", __func__, grp, bit, val);
 
 	switch (io & ~(32 - 1)) {
+#ifndef CONFIG_PINCTRL_NXP2120		
 	CASE_PAD_GPIOS:
 		IO_LOCK(grp);
 		nx_gpio_set_pull_enable(grp, bit, val);
 		IO_UNLOCK(grp);
 		break;
+#endif
 	case PAD_GPIO_ALV:
 		IO_LOCK(grp);
 		if (val & 1)	/* up */
@@ -876,11 +914,13 @@ int nx_soc_gpio_get_io_pull(unsigned int io)
 	pr_debug("%s (%d.%02d)\n", __func__, grp, bit);
 
 	switch (io & ~(32 - 1)) {
+#ifndef CONFIG_PINCTRL_NXP2120
 	CASE_PAD_GPIOS:
 		IO_LOCK(grp);
 		up = nx_gpio_get_pull_enable(grp, bit);
 		IO_UNLOCK(grp);
 		break;
+#endif
 	case PAD_GPIO_ALV:
 		IO_LOCK(grp);
 		up = nx_alive_get_pullup_enable(bit) ? 1 : 0;
@@ -894,7 +934,7 @@ int nx_soc_gpio_get_io_pull(unsigned int io)
 
 	return up;
 }
-
+#ifndef CONFIG_PINCTRL_NXP2120
 void nx_soc_gpio_set_io_drv(int gpio, int mode)
 {
 	int grp, bit;
@@ -922,7 +962,16 @@ int nx_soc_gpio_get_io_drv(int gpio)
 
 	return (int)nx_gpio_get_drive_strength(grp, bit);
 }
+#else
+int nx_soc_gpio_get_io_drv(int gpio)
+{
+	return 0;
+}
 
+void nx_soc_gpio_set_io_drv(int gpio, int mode)
+{
+}
+#endif
 void nx_soc_gpio_set_out_value(unsigned int io, int high)
 {
 	unsigned int grp = PAD_GET_GROUP(io);
@@ -1268,9 +1317,12 @@ static int s5pxx18_gpio_suspend(int idx)
 	gpio_save->GPIOxALTFN[1] = readl(&reg->GPIOxALTFN[1]);
 	gpio_save->GPIOxDETMODE[0] = readl(&reg->GPIOxDETMODE[0]);
 	gpio_save->GPIOxDETMODE[1] = readl(&reg->GPIOxDETMODE[1]);
+#ifndef CONFIG_PINCTRL_NXP2120
 	gpio_save->GPIOxDETMODEEX = readl(&reg->GPIOxDETMODEEX);
+#endif
 	gpio_save->GPIOxINTENB = readl(&reg->GPIOxINTENB);
-
+	
+#ifndef CONFIG_PINCTRL_NXP2120
 	gpio_save->GPIOx_SLEW = readl(&reg->GPIOx_SLEW);
 	gpio_save->GPIOx_SLEW_DISABLE_DEFAULT =
 		readl(&reg->GPIOx_SLEW_DISABLE_DEFAULT);
@@ -1286,7 +1338,7 @@ static int s5pxx18_gpio_suspend(int idx)
 	gpio_save->GPIOx_PULLENB = readl(&reg->GPIOx_PULLENB);
 	gpio_save->GPIOx_PULLENB_DISABLE_DEFAULT =
 		readl(&reg->GPIOx_PULLENB_DISABLE_DEFAULT);
-
+#endif
 	return 0;
 }
 
@@ -1300,7 +1352,7 @@ static int s5pxx18_gpio_resume(int idx)
 
 	reg = gpio_modules[idx].gpio_regs;
 	gpio_save = &gpio_modules[idx].gpio_save;
-
+#ifndef CONFIG_PINCTRL_NXP2120
 	writel(gpio_save->GPIOx_SLEW, &reg->GPIOx_SLEW);
 	writel(gpio_save->GPIOx_SLEW_DISABLE_DEFAULT,
 		&reg->GPIOx_SLEW_DISABLE_DEFAULT);
@@ -1316,14 +1368,16 @@ static int s5pxx18_gpio_resume(int idx)
 	writel(gpio_save->GPIOx_PULLENB, &reg->GPIOx_PULLENB);
 	writel(gpio_save->GPIOx_PULLENB_DISABLE_DEFAULT,
 		&reg->GPIOx_PULLENB_DISABLE_DEFAULT);
-
+#endif
 	writel(gpio_save->GPIOxOUT, &reg->GPIOxOUT);
 	writel(gpio_save->GPIOxOUTENB, &reg->GPIOxOUTENB);
 	writel(gpio_save->GPIOxALTFN[0], &reg->GPIOxALTFN[0]);
 	writel(gpio_save->GPIOxALTFN[1], &reg->GPIOxALTFN[1]);
 	writel(gpio_save->GPIOxDETMODE[0], &reg->GPIOxDETMODE[0]);
 	writel(gpio_save->GPIOxDETMODE[1], &reg->GPIOxDETMODE[1]);
+#ifndef CONFIG_PINCTRL_NXP2120	
 	writel(gpio_save->GPIOxDETMODEEX, &reg->GPIOxDETMODEEX);
+#endif
 	writel(gpio_save->GPIOxINTENB, &reg->GPIOxINTENB);
 	writel(gpio_save->GPIOxINTENB, &reg->GPIOxDETENB);/* DETECT ENABLE */
 	writel((u32)0xFFFFFFFF, &reg->GPIOxDET);	/* CLEAR PENDING */
@@ -1456,9 +1510,10 @@ static int s5pxx18_gpio_device_init(struct list_head *banks, int nr_banks)
 		if (init_data->bank_type == 1) { /* gpio */
 			gpio_modules[i].gpio_regs =
 			    (struct nx_gpio_reg_set *)(init_data->bank_base);
-
+#ifndef CONFIG_PINCTRL_NXP2120
 			nx_gpio_open_module(i);
 			i++;
+#endif
 		} else if (init_data->bank_type == 2) { /* alive */
 			alive_regs =
 			    (struct nx_alive_reg_set *)(init_data->bank_base);
@@ -2140,6 +2195,32 @@ const struct nexell_pin_ctrl nxp5540_pin_ctrl[] = {
 	{
 		.pin_banks = nxp5540_pin_banks,
 		.nr_banks = ARRAY_SIZE(nxp5540_pin_banks),
+		.base_init = s5pxx18_base_init,
+		.gpio_irq_init = s5pxx18_gpio_irq_init,
+		.alive_irq_init = s5pxx18_alive_irq_init,
+		.suspend = s5pxx18_suspend,
+		.resume = s5pxx18_resume,
+	}
+};
+#endif
+
+
+#ifdef CONFIG_PINCTRL_NXP2120
+/* pin banks of nxp2120 pin-controller 0 */
+static struct nexell_pin_bank nxp2120_pin_banks[] = {
+	SOC_PIN_BANK_EINTG(32, 0xA000, "gpioa"),
+	SOC_PIN_BANK_EINTG(32, 0xA040, "gpiob"),
+	SOC_PIN_BANK_EINTG(32, 0xA080, "gpioc"),
+	SOC_PIN_BANK_EINTW(4, 0x9000, "alive"),
+};
+
+/*
+ * Nexell pinctrl driver data for SoC.
+ */
+const struct nexell_pin_ctrl nxp2120_pin_ctrl[] = {
+	{
+		.pin_banks = nxp2120_pin_banks,
+		.nr_banks = ARRAY_SIZE(nxp2120_pin_banks),
 		.base_init = s5pxx18_base_init,
 		.gpio_irq_init = s5pxx18_gpio_irq_init,
 		.alive_irq_init = s5pxx18_alive_irq_init,

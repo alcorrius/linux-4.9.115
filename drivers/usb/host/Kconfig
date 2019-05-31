@@ -266,6 +266,12 @@ config USB_EHCI_EXYNOS
        help
 	Enable support for the Samsung Exynos SOC's on-chip EHCI controller.
 
+config USB_EHCI_NXP2120
+       tristate "EHCI support for Nexell NXP2120 SoC Series"
+       depends on ARCH_NXP2120 
+       help
+	Enable support for the Nexell NXP2120 SOC's on-chip EHCI controller.
+	
 config USB_EHCI_MV
 	bool "EHCI support for Marvell PXA/MMP USB controller"
 	depends on (ARCH_PXA || ARCH_MMP)

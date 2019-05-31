@@ -88,6 +88,27 @@ struct ehci_per_sched {
 
 #define	EHCI_MAX_ROOT_PORTS	15		/* see HCS_N_PORTS */
 
+#if defined(CONFIG_ARCH_NXP2120)
+// swpark add
+#define CONFIG_NXP2120_USB_BUGFIX
+// ksw add for debugging
+//#define CONFIG_NXP2120_USB_BUGFIX_MSG
+#define MAX_NXP2120_BUGFIX_COUNT	64
+
+/* swpark add for nxp2120 usb host bug */
+#ifdef CONFIG_NXP2120_USB_BUGFIX
+struct nxp2120_usb_bugfix {
+	struct urb *urb;
+	int active;
+	void *org_transfer_buffer;
+	dma_addr_t org_transfer_dma;
+	void *transfer_buffer;
+	dma_addr_t transfer_dma;
+	u32 real_transfer_buffer_length;
+	u32 transfer_buffer_size;
+};
+#endif
+#endif
 /*
  * ehci_rh_state values of EHCI_RH_RUNNING or above mean that the
  * controller may be doing DMA.  Lower values mean there's no DMA.
@@ -266,6 +287,10 @@ struct ehci_hcd {			/* one per controller */
 						/* us budgeted per uframe */
 	struct list_head	tt_list;
 
+#ifdef CONFIG_NXP2120_USB_BUGFIX
+    int                       nxp2120_bugfix_count;
+	struct nxp2120_usb_bugfix nxp2120_bugfix[MAX_NXP2120_BUGFIX_COUNT];
+#endif
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };

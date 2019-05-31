@@ -1,0 +1,228 @@
+/*
+ * Nexell's nxp2120 SoC pin-mux and pin-config device tree source
+ *
+ * Copyright (C) 2019 I4VINE
+ * Author: Juyoung Ryu <jyryu@i4vine.com>	
+ *
+ * Nexell's nxp2120 SoC pin-mux and pin-config options are listed as
+ * device tree nodes in this file.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+#include <dt-bindings/pinctrl/nexell.h>
+
+#define PIN_CFG(_pin, _func, _pull, _str)			\
+	_pin {							\
+		nexell,pins = #_pin;				\
+		nexell,pin-function = <NX_PIN_ ##_func>;	\
+		nexell,pin-pull = <NX_PIN_PULL ##_pull>;	\
+		nexell,pin-strength = <NX_PIN_ ##_str>;		\
+	}
+
+#define PIN_IN(_pin, _func, _pull, _str)			\
+	_pin {							\
+		nexell,pins = #_pin;				\
+		nexell,pin-dir = <NX_GPIO_INPUT>;		\
+		nexell,pin-function = <NX_PIN_ ##_func>;	\
+		nexell,pin-pull = <NX_PIN_PULL_ ##_pull>;	\
+		nexell,pin-strength = <NX_PIN_ ##_str>;		\
+	}
+
+#define PIN_OUT(_pin, _val, _func, _pull, _str)			\
+	_pin {							\
+		nexell,pins = #_pin;				\
+		nexell,pin-dir = <NX_GPIO_OUTPUT>;		\
+		nexell,pin-val = <NX_GPIO_ ##_val>;		\
+		nexell,pin-function = <NX_PIN_ ##_func>;	\
+		nexell,pin-pull = <NX_PIN_PULL_ ##_pull>;	\
+		nexell,pin-strength = <NX_PIN_ ##_str>;		\
+	}
+	
+pinctrl_0@0 {
+	gpio_a: gpioa {
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+	
+	gpio_b: gpiob {
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+	
+	gpio_c: gpioc {
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+	
+	alive_0: alive {
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+	
+/* serial */
+	serial0_pin:uart0 {
+		nexell,pins = "gpioc-20", "gpiob-0";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+	serial1_pin:uart1 {
+		nexell,pins = "gpioc-8", "gpiob-1";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+/* sd/mmc */
+	sdmmc0_cclk: sdmmc0-cclk {
+		nexell,pins = "gpiob-13";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR2>;
+	};
+
+	sdmmc0_cmd: sdmmc0-cmd {
+		nexell,pins = "gpiob-14";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR1>;
+	};
+	
+	sdmmc0_data: sdmmc0-data {
+		nexell,pins = "gpiob-15", "gpiob-16", "gpiob-17",
+				      "gpiob-18";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+/* i2s */
+	i2s0_bus: i2s0 {
+		nexell,pins = "gpiob-8", "gpiob-9", "gpiob-10",
+				"gpiob-11","gpiob-12";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+/* AC97 */
+	i2s0_bus_1: i2s0_1 {
+		nexell,pins = "gpiob-8", "gpiob-9", "gpiob-10",
+				"gpiob-11","gpiob-12";
+		nexell,pin-function = <NX_PIN_FUNC2>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+/* i2c */
+	i2c0_sda_pin:i2c0_sda {
+		nexell,pins = "gpiob-5";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+	i2c0_scl_pin:i2c0_scl {
+		nexell,pins = "gpiob-4";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+	i2c1_sda_pin:i2c1_sda {
+		nexell,pins = "gpiob-7";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+	i2c1_scl_pin:i2c1_scl {
+		nexell,pins = "gpiob-6";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	spi0_bus: spi0 {
+		nexell,pins = "gpioa-28", "gpioa-29", "gpioa-30", "gpioa-31";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	spdifin_pin:spdifin {
+		nexell,pins = "gpiob-3";
+		nexell,pin-function = <NX_PIN_FUNC2>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	ppmin_pin:ppmin {
+		nexell,pins = "gpiob-3";
+		nexell,pin-function = <NX_PIN_FUNC3>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+	pwm0_pin:pwm0 {
+		nexell,pins = "gpiob-2";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
+	pwm1_pin:pwm1 {
+		nexell,pins = "gpiob-3";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	vid0_data_clk: vid0-data-clk {
+		nexell,pins = "gpiob-31", "gpioc-0", "gpioc-1", "gpioc-2", "gpioc-3", "gpioc-4", "gpioc-5", "gpioc-6";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	vid0_vclk: vid0-vclk {
+		nexell,pins = "gpioc-7";
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	vidb_data_clk: vidb-data-clk {
+		nexell,pins = "gpiob-13", "gpiob-14", "gpiob-15", "gpiob-16", "gpiob-17", "gpiob-18", "gpioa-29", "gpioa-30";
+		nexell,pin-function = <NX_PIN_FUNC3>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	vidb_vclk: vidb-vclk {
+		nexell,pins = "gpiob-2";
+		nexell,pin-function = <NX_PIN_FUNC2>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+	
+	vidb_vclk2: vidb-vclk2 {
+		nexell,pins = "gpioa-31";
+		nexell,pin-function = <NX_PIN_FUNC3>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+};

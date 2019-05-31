@@ -549,5 +549,11 @@ config CLKSRC_NEXELL_TIMER
 	help
 	  This is a new clocksource driver for the Nexell timer.
 
-
+config CLKSRC_NXP2120_TIMER
+	bool "Support for nxp2120 timer generation"
+	def_bool y if ARCH_NXP2120 
+	select CLKSRC_OF if OF
+	help
+	  This is a new clocksource driver for the Nexell timer.
+	  
 endmenu

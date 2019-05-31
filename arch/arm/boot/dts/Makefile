@@ -955,7 +955,9 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += \
 dtb-$(CONFIG_ARCH_ZX) += zx296702-ad1.dtb
 dtb-$(CONFIG_ARCH_ASPEED) += aspeed-bmc-opp-palmetto.dtb \
 	aspeed-ast2500-evb.dtb
-dtb-$(CONFIG_ARCH_S5P4418) += nxp4330-v453.dtb
+dtb-$(CONFIG_ARCH_S5P4418) += nxp4330-v453.dtb \
+	nxp4330-5MP.dtb
+dtb-$(CONFIG_ARCH_NXP2120) += nxp2120-m9.dtb
 endif
 
 
