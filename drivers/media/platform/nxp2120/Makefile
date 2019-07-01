@@ -1,0 +1,66 @@
+#
+# Copyright 2014 STcube Inc.,
+#
+# Makefile for the NXP2120's V4L2 driver
+#
+
+MT9M111_INCLUDE:=n
+ifeq ($(CONFIG_CAMERA1_MT9M111),y)
+MT9M111_INCLUDE=y
+endif
+ifeq ($(CONFIG_CAMERA2_MT9M111),y)
+MT9M111_INCLUDE=y
+endif
+
+POA030_INCLUDE:=n
+ifeq ($(CONFIG_CAMERA1_POA030),y)
+POA030_INCLUDE=y
+endif
+ifeq ($(CONFIG_CAMERA2_POA030),y)
+POA030_INCLUDE=y
+endif
+
+HI702_INCLUDE:=n
+ifeq ($(CONFIG_CAMERA1_HI702),y)
+HI702_INCLUDE=y
+endif
+ifeq ($(CONFIG_CAMERA2_HI702),y)
+HI702_INCLUDE=y
+endif
+
+HI161_INCLUDE:=n
+ifeq ($(CONFIG_CAMERA1_HI161),y)
+HI161_INCLUDE=y
+endif
+ifeq ($(CONFIG_CAMERA2_HI161),y)
+HI161_INCLUDE=y
+endif
+
+OV7675_INCLUDE:=n
+ifeq ($(CONFIG_CAMERA1_OV7675),y)
+OV7675_INCLUDE=y
+endif
+ifeq ($(CONFIG_CAMERA2_OV7675),y)
+OV7675_INCLUDE=y
+endif
+
+MT9M114_INCLUDE:=n
+ifeq ($(CONFIG_CAMERA1_MT9M114),y)
+MT9M114_INCLUDE=y
+endif
+ifeq ($(CONFIG_CAMERA2_MT9M114),y)
+MT9M114_INCLUDE=y
+endif
+
+
+obj-y  	+= nx_vip_v4l2.o nx_vip_core.o #cap_i2c.o
+
+obj-$(MT9M111_INCLUDE)			+= mt9m111.o
+obj-$(POA030_INCLUDE)			+= poa030r.o
+obj-$(HI702_INCLUDE)			+= hi702.o
+obj-$(HI161_INCLUDE)			+= hi161.o
+obj-$(OV7675_INCLUDE)	 		+= ov7675.o
+obj-$(MT9M114_INCLUDE)			+= mt9m114.o
+obj-$(CONFIG_CAMERA2_DUMMY_COPY) += dumcopy.o
+
+

@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+/dts-v1/; 
 #include "nxp2120.dtsi"
 
 /{
@@ -30,7 +30,6 @@
 	
 	soc{
 		#include "nxp2120-pinctrl.dtsi"
-		
 		uart0: uart@C0016000 {
 			id = <0>;
 			status = "okay";
@@ -48,6 +47,63 @@
 		audio: audio@C00D8000 {
 			status = "okay";
 		};
+		
+		scaler: scaler@C0003800 {
+			status = "okay";
+		};
+		
+		vip0: vip@C0002800 {
+			status = "okay";
+			gpio_reset-gpios = <&gpio_a 4 0>;
+			id = <0>;
+			source_sel = <0>;
+			use_scaler = <1>;
+			data_order = <0>; 
+			port {
+				vip0_ep: endpoint {
+					remote-endpoint = <&poa030>;
+					external_sync = <0>;
+					h_frontporch = <4>;
+					h_syncwidth = <4>;
+					h_backporch = <4>;
+					v_frontporch = <1>;
+					v_syncwidth = <1>;
+					v_backporch = <1>;
+					clock_invert = <0>;
+					interlace = <0>;
+					power_enable = <0>;// camera_power_enable;
+					max_width = <640>;
+					max_height = <480>;					
+					/*hor_align = <1>;
+					ver_align = <1>;*/
+					buff_count = <4>;
+					skip_count = <3>;
+					time_stamp_on = <0>;
+
+				};
+			};
+		
+		};
+		
+		vip1: vip@C0010800 {
+			status = "disabled";	
+			gpio_reset-gpios = <&gpio_a 28 0>;
+			id = <1>;
+			source_sel = <0>;
+			use_scaler = <1>;
+			data_order = <0>; 
+			port {
+			/*	vip1_ep: endpoint {
+					remote-endpoint = <&poa030_2>;
+					hor_align = <1>;
+					ver_align = <1>;
+					buff_count = <4>;
+					skip_count = <3>;
+					time_stamp_on = <0>;
+
+				};*/
+			};
+		};		
 		
 		mcus:mcus@C0015800 {
 			status = "okay";
@@ -154,6 +210,117 @@
 		timer-names = "timer source", "timer event";
 	};
 
-
-
+	sound {
+		compatible = "nexell,nxp2120-wm8960";
+		model = "wm8960-audio";
+		status = "okay";
+		i2s-controller = <&audio>;
+		audio-codec0 = <&codec0>;
+		audio-routing =
+			"Headphone Jack", "HP_L",
+			"Headphone Jack", "HP_R",
+			"Ext Spk", "SPK_LP",
+			"Ext Spk", "SPK_LN",
+			"AMIC", "LINPUT1",
+			"AMIC", "RINPUT1";
+	};
 };
+
+&i2c0 {
+	gpios = <&gpio_b 5 0 /* sda */
+			&gpio_b 4 0 /* scl */>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+			
+	status = "okay";
+	
+	poa030@6E {
+		compatible = "pixelplus,poa030";
+		reg = <0x6E>;
+/*		monochrome = <1>;
+		def_ae = <1>;
+		def_exposure = <128>;*/
+		def_width = <640>;
+		def_height = <480>;
+
+		port {
+			poa030:endpoint{
+				remote-endpoint = <&vip0_ep>;
+			};
+		};
+	};	
+	
+	codec0: wm8960@1a {
+		compatible = "wlf,wm8960";
+		reg = <0x1a>;
+		wlf,shared-lrclk;
+		clocks = <&audclk0>;
+		clock-names = "mclk";
+	};
+};
+
+&i2c1 {
+	gpios = <&gpio_b 7 0 /* sda */
+			&gpio_b 6 0 /* scl */>;	
+	#address-cells = <1>;
+	#size-cells = <0>;			
+	
+	status = "okay";
+	
+
+	/*poa030@6E {
+		compatible = "pixelplus,poa030";
+		reg = <0x6E>;
+		monochrome = <1>;
+		def_ae = <1>;
+		def_width = <320>;
+		def_height = <240>;
+		def_exposure = <128>;
+		port {
+			poa030_0:endpoint{
+				remote-endpoint = <&vip0_ep>;
+			};
+		};
+	};*/
+};
+/*
+&vip0 {
+	status = "okay";
+
+	port {
+		vip0_ep: endpoint {
+			remote-endpoint = <&poa030_0>;
+			module = <0>;
+			sensor = <0>;
+			type = <0>; //NXP_CAPTURE_INF_PARALLEL;
+			is_mipi = <0>;
+			external_sync = <0>;
+			h_active = <640>;
+			h_frontporch = <4>;
+			h_syncwidth = <4>;
+			h_backporch = <4>;
+			v_active = <480>;
+			v_frontporch = <1>;
+			v_syncwidth = <1>;
+			v_backporch = <1>;
+			clock_invert = <0>;
+			monochrome = <1>;
+			port = <1>; // NX_VIP_INPUTPORT_B;
+			data_order = <0>; // NXP_VIN_CBY0CRY1;
+			interlace = <0>;
+			clk_rate = <27000000>;
+			late_power_down = <0>;
+			power_enable = <1>; // camera_power_enable;
+			set_clock = <1>; // camera_set_clock;
+			max_width = <640>;
+			max_height = <480>;
+			seqfunc_type = <1>;   // this is laser_seqfunc 
+			setup_io = <0>; // NULL;
+			start_delay_ms = <0>;
+			stop_delay_ms = <0>;
+			clk_src = <5>;  // port=0 =>4, port=1 =>5
+			clk_div = <0>;
+		};
+	};
+};
+*/

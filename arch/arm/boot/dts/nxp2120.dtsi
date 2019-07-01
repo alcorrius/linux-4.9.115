@@ -43,12 +43,13 @@
  *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
- 
+
 /*#include "skeleton.dtsi"
 #include <dt-bindings/interrupt-controller/irq.h>*/
 #include <dt-bindings/soc/nxp2120-base.h>
 #include <dt-bindings/clk/nxp2120-clk.h>
-/dts-v1/;
+
+
 
 
 / {
@@ -58,7 +59,11 @@
 	#size-cells = <0x1>;
 	
 	aliases {
-		/*pinctrl0 = &pinctrl_0;*/
+		i2c0	= &i2c0;
+		i2c1	= &i2c1;
+		pinctrl0 = &pinctrl_0;
+		scaler = &scaler;
+		vip0 = &vip0;
 	};
 	cpus {
 		#address-cells = <1>;
@@ -142,160 +147,187 @@
 	clocks {
 		#address-cells = <1>;
 		#size-cells = <1>;
+		#clock-cells = <0>;
 		compatible = "nexell,nxp2120,clocks";
 		ranges;
 
 		tmclk0: tmclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0001840 0x10>;
 			clk-enb-type = <CLKENB_TYPE_TIMER>;
 			clk-gen-type = <CLKGEN_TYPE_TIMER>;
 			clock-output-names = "tmclk0";
 		};
 		tmclk1: tmclk@1 {
+			#clock-cells = <0>;
 			reg = <0xC00018C0 0x10>;		
 			clk-enb-type = <CLKENB_TYPE_TIMER>;
 			clk-gen-type = <CLKGEN_TYPE_TIMER>;
 			clock-output-names = "tmclk1";
 		};
 		tmclk2: tmclk@2 {
+			#clock-cells = <0>;
 			reg = <0xC0001940 0x10>;
 			clk-enb-type = <CLKENB_TYPE_TIMER>;
 			clk-gen-type = <CLKGEN_TYPE_TIMER>;
 			clock-output-names = "tmclk2";
 		};
 		tmclk3: tmclk@3 {
+			#clock-cells = <0>;
 			reg = <0xC00019C0 0x10>;
 			clk-enb-type = <CLKENB_TYPE_TIMER>;
 			clk-gen-type = <CLKGEN_TYPE_TIMER>;
 			clock-output-names = "tmclk3";
 		};
 		tmclk4: tmclk@4 {
+			#clock-cells = <0>;
 			reg = <0xC0001A40 0x10>;
 			clk-enb-type = <CLKENB_TYPE_TIMER>;
 			clk-gen-type = <CLKGEN_TYPE_TIMER>;
 			clock-output-names = "tmclk4";
 		};
 		audclk0: audclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC000D8C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_AUDIO>;
 			clk-gen-type = <CLKGEN_TYPE_AUDIO>;
 			clock-output-names = "audclk";
 		};
 		uartclk0: uartclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0016040 0x20>;
 			clk-enb-type = <CLKENB_TYPE_UART>;
 			clk-gen-type = <CLKGEN_TYPE_UART>;
 			clock-output-names = "uartclk0";
 		};
 		uartclk1: uartclk@1 {
+			#clock-cells = <0>;
 			reg = <0xC00160C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_UART>;
 			clk-gen-type = <CLKGEN_TYPE_UART>;
 			clock-output-names = "uartclk1";
 		};
 		sspclk0: sspclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0007840 0x40>;
 			clk-enb-type = <CLKENB_TYPE_SSP>;
 			clk-gen-type = <CLKGEN_TYPE_SSP>;
 			clock-output-names = "sspclk0";
 		};
 		i2cclk0: i2cclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC000E100 0x20>;
 			clk-enb-type = <CLKENB_TYPE_I2C>;
 			clk-gen-type = <CLKGEN_TYPE_I2C>;
 			clock-output-names = "i2cclk0";
 		};
 		i2cclk1: i2cclk@1 {
+			#clock-cells = <0>;
 			reg = <0xC000E900 0x20>;
 			clk-enb-type = <CLKENB_TYPE_I2C>;
 			clk-gen-type = <CLKGEN_TYPE_I2C>;
 			clock-output-names = "i2cclk1";
 		};
 		sdclk0: sdclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0009FC0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_SDMMC>;
 			clk-gen-type = <CLKGEN_TYPE_SDNNC>;			
 			clock-output-names = "sdclk0";
 		};
 		udclk0: udclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC00188C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_USBDEV>;
 			clk-gen-type = <CLKGEN_TYPE_USBDEV>;
 			clock-output-names="udclk0";
 		};
 		uhclk0: uhclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC001D3C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_USBHOST>;
 			clk-gen-type = <CLKGEN_TYPE_USBHOST>;
 			clock-output-names="uhclk0";
 		};
 		ppmclk0: ppmclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC000A840 0x20>;
 			clk-enb-type = <CLKENB_TYPE_PPM>;
 			clk-gen-type = <CLKGEN_TYPE_PPM>;
 			clock-output-names="ppmclk0";
 		};
 		pwmclk0: pwmclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC000C040 0x20>;
 			clk-enb-type = <CLKENB_TYPE_PWM>;
 			clk-gen-type = <CLKGEN_TYPE_PWM>;
 			clock-output-names="pwmclk0";
 		};
 		adcclk0: adcclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0005040 0x20>;
 			clk-enb-type = <CLKENB_TYPE_ADC>;
 			clk-gen-type = <CLKGEN_TYPE_ADC>;
 			clock-output-names="adcclk0";
 		};
 		mlcclk0: mclclk@0 {
+			/*#clock-cells = <0>;*/
 			reg = <0xC00043C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_MLC>;
 			clk-gen-type = <CLKGEN_TYPE_MLC>;
 			clock-output-names="mlcclk0";
 		};
 		dpcclk0: dpcclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC00031C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_DPC>;
 			clk-gen-type = <CLKGEN_TYPE_DPC>;
 			clock-output-names="dpcclk0";
 		};
 		dpcclk1: dpcclk@1 {
+			#clock-cells = <0>;
 			reg = <0xC00035C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_DPC>;
 			clk-gen-type = <CLKGEN_TYPE_DPC>;
 			clock-output-names="dpcclk1";
 		};
 		roclk0: roclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0004FC0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_ROTATOR>;
 			clk-gen-type = <CLKGEN_TYPE_ROTATOR>;
 			clock-output-names="roclk0";
 		};
 		scclk0: scclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0003FC0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_SCALER>;
 			clk-gen-type = <CLKGEN_TYPE_SCALER>;
 			clock-output-names="scclk0";
 		};
 		diclk0: diclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC00041C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_DEINT>;
 			clk-gen-type = <CLKGEN_TYPE_DEINT>;
 			clock-output-names="diclk0";
 		};
 		cscclk0: cscclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC00097C0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_CSC>;
 			clk-gen-type = <CLKGEN_TYPE_CSC>;
 			clock-output-names="cscclk0";
 		};
 		vipclk0: vipclk@0 {
+			#clock-cells = <0>;
 			reg = <0xC0002FC0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_VIP>;
 			clk-gen-type = <CLKGEN_TYPE_VIP>;
 			clock-output-names="vipclk0";
 		};
 		vipclk1: vipclk@1 {
+			#clock-cells = <0>;
 			reg = <0xC0010FC0 0x20>;
 			clk-enb-type = <CLKENB_TYPE_VIP>;
 			clk-gen-type = <CLKGEN_TYPE_VIP>;
@@ -303,7 +335,7 @@
 		};
 	};
 	
-	soc {
+	soc{
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -374,14 +406,16 @@
 		};
 
 
-		dma: dmac@C0000000 {
+		dma: dma-controller@C0000000 {
 			compatible = "nexell,nxp2120-dma";
 			reg = <0xC0000000 0x400>;
+			#dma-cells = <2>;
+			dma-channels = <8>;
 			interrupts = <3>;
 		};
 		
-		pinctrl_0: pinctrl@0 {
-			compatible = "nexell, nxp2120-pinctrl";
+		pinctrl_0: pinctrl@C0000000 {
+			compatible = "nexell,nxp2120-pinctrl";
 			reg = <PHYS_BASE_GPIOA 0x40
 				   PHYS_BASE_GPIOB 0x40
 				   PHYS_BASE_GPIOC 0x40
@@ -401,7 +435,7 @@
 			reg = <0xC0014800 0x1000>;
 			num-cs = <2>;
 			nand-cs = <2>;
-			pinctrl-names = "default";
+			/* pinctrl-names = "default"; */
 			status = "disabled";
 		};
 		
@@ -413,7 +447,7 @@
 			interrupts = <26>;		
 			num-cs = <2>;
 			nand-cs = <2>;
-			pinctrl-names = "default";
+			/* pinctrl-names = "default"; */
 			status = "disabled";
 		};
 		
@@ -433,8 +467,10 @@
 			interrupts = <10>;
 			clock-names = "uartclk";
 			clocks = <&uartclk0>;
-			pinctrl-names = "default";
-		/*	pinctrl-0 = <&serial0_pin>;*/
+			dma-names = "tx","rx";
+			dmas = <&dma 0 0>,<&dma 0 1>;
+		/*	pinctrl-names = "default";
+			pinctrl-0 = <&serial0_pin>;*/
 			status = "disabled";
 		};
 
@@ -444,8 +480,10 @@
 			interrupts = <34>;
 			clock-names = "uartclk1";
 			clocks = <&uartclk1>;
-			pinctrl-names = "default";
-		/*	pinctrl-0 = <&serial1_pin>;*/
+			dma-names = "tx","rx";
+			dmas = <&dma 0 2>,<&dma 0 3>;
+		/*	pinctrl-names = "default";
+			pinctrl-0 = <&serial1_pin>;*/
 			status = "disabled";
 		};
 		
@@ -466,9 +504,8 @@
 			interrupts = <32>;
 			clock-names = "i2cclk0";
 			clocks = <&i2cclk0>;
-			pinctrl-names = "sda0","scl0";
-			pinctrl-0 = <&i2c0_sda_pin>;
-			pinctrl-1 = <&i2c0_scl_pin>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c0_sda_pin &i2c0_scl_pin>;
 			status = "disabled";
 		};
 		
@@ -478,9 +515,8 @@
 			interrupts = <33>;
 			clock-names = "i2cclk1";
 			clocks = <&i2cclk1>;
-			pinctrl-names = "sda1","scl1";
-			pinctrl-0 = <&i2c1_sda_pin>;
-			pinctrl-1 = <&i2c1_scl_pin>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c1_sda_pin &i2c1_scl_pin>;
 			status = "disabled";
 		};
 
@@ -558,8 +594,11 @@
 		
 		audio: audio@C00D8000 {
 			compatible = "nexell,nxp2120-audio";
-			reg = <0xC000D800 0x3BC>;
+			reg = <0xC000D800 0x3C0>;
 			interrupts = <24>;
+			dmas = <&dma 0 24>, <&dma 0 25>, <&dma 0 26>, 
+					<&dma 0 27>, <&dma 0 28>, <&dma 0 29>;
+			dma-names = "pcmout", "spdif", "pcmin", "micin", "adc0", "adc1";
 		};
 
 		spdif_rx: spdifrx@C0011800 {
@@ -580,7 +619,7 @@
 
 		scaler: scaler@C0003800 {
 			compatible = "nexell,nxp2120-scaler";
-			reg = <0xC0003800 0x100>;
+			reg = <0xC0003800 0x1000>;
 			interrupts = <30>;
 			status = "disabled";
 		};
@@ -604,6 +643,7 @@
 			module = <1>;
 			status = "disabled";
 		};
+		/*#include "nxp2120-pinctrl.dtsi"*/
 /*		
 		gpioa: gpio@C000A000 {
 			compatible = "nexell,nxp2120-gpio";
