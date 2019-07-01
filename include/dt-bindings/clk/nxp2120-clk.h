@@ -37,6 +37,7 @@
 #define CLKGEN_TYPE_GEN0L_GEN0H_GEN1	(2 << 8)
 #define CLKGEN_TYPE_GEN0L_GEN0H			(1 << 8)
 #define CLKGEN_TYPE_GEN0    			(0 << 8)
+#define CLKGEN_MASK_GEN					(0x0F << 8)
 
 #define CLKGEN_TYPE_OUTCLK_ENB			(1 << 7)
 #define CLKGEN_TYPE_OUTCLK_INV			(1 << 6)
@@ -46,6 +47,7 @@
 #define CLKGEN_TYPE_DIV_10_5			(2 << 4)
 #define CLKGEN_TYPE_DIV_9_5				(1 << 4)
 #define CLKGEN_TYPE_DIV_12_5			(0 << 4)
+#define CLKGEN_MASK_DIV					(3 << 4)
 
 #define CLKGEN_TYPE_PLL0_PLL1_SVLK_PSVLCK_IPSVCLK_AVCLK_ISVCLK	(8 << 0)
 #define CLKGEN_TYPE_PLL0_PLL1_XTI 						(7 << 0)
@@ -55,6 +57,7 @@
 #define CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK				(3 << 0)
 #define CLKGEN_TYPE_PCLK_PLL0_PLL1						(2 << 0)
 #define CLKGEN_TYPE_PLL0_PLL1							(1 << 0)
+#define CLKGEN_MASK_SRC									(0x0F << 0)
 
 
 #define CLKENB_TYPE_TIMER				(CLKENB_TYPE_PCLK_CLKENB)

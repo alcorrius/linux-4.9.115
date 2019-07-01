@@ -41,7 +41,7 @@
 		nexell,pin-strength = <NX_PIN_ ##_str>;		\
 	}
 	
-pinctrl_0@0 {
+pinctrl@C0000000 {
 	gpio_a: gpioa {
 		gpio-controller;
 		#gpio-cells = <2>;
@@ -72,14 +72,14 @@ pinctrl_0@0 {
 	};
 	
 /* serial */
-	serial0_pin:uart0 {
+	serial0_pin: uart0 {
 		nexell,pins = "gpioc-20", "gpiob-0";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
-	serial1_pin:uart1 {
+	serial1_pin: uart1 {
 		nexell,pins = "gpioc-8", "gpiob-1";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
@@ -128,28 +128,28 @@ pinctrl_0@0 {
 	};
 	
 /* i2c */
-	i2c0_sda_pin:i2c0_sda {
+	i2c0_sda_pin: i2c_sda0 {
 		nexell,pins = "gpiob-5";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
-	i2c0_scl_pin:i2c0_scl {
+	i2c0_scl_pin: i2c_scl0 {
 		nexell,pins = "gpiob-4";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
-	i2c1_sda_pin:i2c1_sda {
+	i2c1_sda_pin: i2c1_sda {
 		nexell,pins = "gpiob-7";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
-	i2c1_scl_pin:i2c1_scl {
+	i2c1_scl_pin: i2c1_scl {
 		nexell,pins = "gpiob-6";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
@@ -163,28 +163,28 @@ pinctrl_0@0 {
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 	
-	spdifin_pin:spdifin {
+	spdifin_pin: spdifin {
 		nexell,pins = "gpiob-3";
 		nexell,pin-function = <NX_PIN_FUNC2>;
 		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 	
-	ppmin_pin:ppmin {
+	ppmin_pin: ppmin {
 		nexell,pins = "gpiob-3";
 		nexell,pin-function = <NX_PIN_FUNC3>;
 		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
-	pwm0_pin:pwm0 {
+	pwm0_pin: pwm0 {
 		nexell,pins = "gpiob-2";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
-	pwm1_pin:pwm1 {
+	pwm1_pin: pwm1 {
 		nexell,pins = "gpiob-3";
 		nexell,pin-function = <NX_PIN_FUNC1>;
 		nexell,pin-pull = <NX_PIN_PULL_DOWN>;

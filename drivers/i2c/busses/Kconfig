@@ -1017,6 +1017,13 @@ config I2C_NX
 	  If you say yes to this option, support will be included for the
 	  Nexell s5p4418 I2C interface.
 
+config I2C_NXP2120
+	tristate "Nexell nxp2120 I2C interface"
+	depends on ARCH_NXP2120
+	help
+	  If you say yes to this option, support will be included for the
+	  Nexell nxp2120 I2C interface.
+
 	  
 comment "External I2C/SMBus adapter drivers"
 

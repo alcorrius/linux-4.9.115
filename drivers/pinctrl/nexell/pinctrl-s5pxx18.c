@@ -343,16 +343,30 @@ int nx_gpio_get_drive_strength(u32 idx, u32 bitnum)
 {
 	return 0;
 }
-/*
+
 void nx_gpio_set_pull_enable(u32 idx, u32 bitnum, int pullsel)
 {
+	struct nx_gpio_reg_set *p_register;
 
+	p_register = gpio_modules[idx].gpio_regs;
+
+	if (pullsel == nx_gpio_pull_up) {
+		nx_gpio_setbit(&p_register->GPIOxPUENB, bitnum, true);
+	} else {
+		nx_gpio_setbit(&p_register->GPIOxPUENB, bitnum, false);
+	}
 }
+
 int nx_gpio_get_pull_enable(u32 idx, u32 bitnum)
 {
-	return 0;
+	struct nx_gpio_reg_set *p_register;
+	bool enable;
+
+	p_register = gpio_modules[idx].gpio_regs;
+	enable = nx_gpio_getbit(readl(&p_register->GPIOxPUENB), bitnum);
+	return enable;
 }
-*/
+
 #endif
 #ifdef CONFIG_PINCTRL_S5PXX18
 void nx_gpio_set_input_mux_select0(u32 idx, u32 value)
@@ -773,12 +787,12 @@ void nx_soc_gpio_set_io_func(unsigned int io, unsigned int func)
 	unsigned int grp = PAD_GET_GROUP(io);
 	unsigned int bit = PAD_GET_BITNO(io);
 
-	pr_debug("%s (%d.%02d)\n", __func__, grp, bit);
+	pr_debug("%s (%d.%02d) io=%d func=%d\n", __func__, grp, bit, io, func);
 
 	switch (io & ~(32 - 1)) {
 	CASE_PAD_GPIOS:
 		IO_LOCK(grp);
-		nx_gpio_set_pad_function(grp, bit, func);
+		nx_gpio_set_pad_function(grp, bit, func);		
 		IO_UNLOCK(grp);
 		break;
 	case PAD_GPIO_ALV:
@@ -883,13 +897,11 @@ void nx_soc_gpio_set_io_pull(unsigned int io, int val)
 	pr_debug("%s (%d.%02d) sel:%d\n", __func__, grp, bit, val);
 
 	switch (io & ~(32 - 1)) {
-#ifndef CONFIG_PINCTRL_NXP2120		
 	CASE_PAD_GPIOS:
 		IO_LOCK(grp);
 		nx_gpio_set_pull_enable(grp, bit, val);
 		IO_UNLOCK(grp);
 		break;
-#endif
 	case PAD_GPIO_ALV:
 		IO_LOCK(grp);
 		if (val & 1)	/* up */
@@ -1512,8 +1524,8 @@ static int s5pxx18_gpio_device_init(struct list_head *banks, int nr_banks)
 			    (struct nx_gpio_reg_set *)(init_data->bank_base);
 #ifndef CONFIG_PINCTRL_NXP2120
 			nx_gpio_open_module(i);
-			i++;
 #endif
+			i++;
 		} else if (init_data->bank_type == 2) { /* alive */
 			alive_regs =
 			    (struct nx_alive_reg_set *)(init_data->bank_base);
@@ -1523,6 +1535,9 @@ static int s5pxx18_gpio_device_init(struct list_head *banks, int nr_banks)
 			 * must be clear wfi jump address
 			 */
 			nx_alive_set_write_enable(true);
+
+			nx_alive_set_output_enable(4,false);
+			nx_alive_set_pullup_enable(4,false);
 		}
 	}
 
@@ -1742,6 +1757,11 @@ static int s5pxx18_gpio_irq_init(struct nexell_pinctrl_drv_data *d)
 	struct nexell_pin_bank *bank;
 	struct device *dev = d->dev;
 	int ret;
+#if defined(CONFIG_PINCTRL_NXP2120)
+	int irq_flag = IRQF_SHARED;
+#else
+	int irq_flag = 0;
+#endif
 	int i;
 
 	bank = d->ctrl->pin_banks;
@@ -1750,7 +1770,7 @@ static int s5pxx18_gpio_irq_init(struct nexell_pinctrl_drv_data *d)
 			continue;
 
 		ret = devm_request_irq(dev, bank->irq, s5pxx18_gpio_irq_handler,
-				       0, dev_name(dev), bank);
+				       irq_flag, dev_name(dev), bank);
 		if (ret) {
 			dev_err(dev, "irq request failed\n");
 			ret = -ENXIO;

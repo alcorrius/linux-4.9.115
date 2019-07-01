@@ -196,7 +196,7 @@ static int nx_vip_v4l2_querycap(struct file *file, void *fh,
 
 	cap->version = 0;
 //	cap->capabilities = (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE); /* ksw : READWRITE ? */
-	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
+	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_READWRITE;
 	cap->capabilities =  cap->device_caps | V4L2_CAP_DEVICE_CAPS;
 	printk("############%s exit\n", __func__);
 	return 0;
@@ -1061,7 +1061,7 @@ int nx_vip_v4l2_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
     if (!ret)
 		nxp_stream_off(ctrl);
 
-
+	nx_vip_free_frame_memory(&ctrl->cap_frame);
 	/* Now deallocate memory */
 	//nx_vip_free_output_memory(&ctrl->out_frame);
 //	nx_vip_set_output_address(ctrl);
@@ -1160,7 +1160,7 @@ static int nx_vip_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestb
 	}
 	ctrl->cap_frame.nr_frames = b->count;
 	vq = &ctrl->vb2_q;
-	INIT_LIST_HEAD(&ctrl->bufs);	
+//	INIT_LIST_HEAD(&ctrl->bufs);	
 	
 	ret = vb2_reqbufs(vq, b);
 
@@ -1467,7 +1467,7 @@ const struct v4l2_ioctl_ops nx_vip_v4l2_ops = {
 	.vidioc_s_output		= nx_vip_v4l2_s_output,
 	.vidioc_enum_input		= nx_vip_v4l2_enum_input,
 	.vidioc_enum_output		= nx_vip_v4l2_enum_output,	
-	.vidioc_reqbufs			= nx_vip_v4l2_reqbufs,//vb2_ioctl_reqbufs,//nx_vip_v4l2_reqbufs,
+	.vidioc_reqbufs			= vb2_ioctl_reqbufs,//nx_vip_v4l2_reqbufs,//vb2_ioctl_reqbufs,//nx_vip_v4l2_reqbufs,
 	.vidioc_create_bufs		= vb2_ioctl_create_bufs,	
 	.vidioc_prepare_buf		= vb2_ioctl_prepare_buf,	
 	.vidioc_querybuf		= vb2_ioctl_querybuf,//nx_vip_v4l2_querybuf,

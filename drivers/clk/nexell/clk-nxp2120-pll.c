@@ -39,7 +39,8 @@
 #define ID_MCLK		4
 #define ID_BCLK		5
 #define ID_PCLK		6
-#define ID_END		7
+#define ID_XTI		7
+#define ID_END		8
 
 #define CLK_CPU_PLL0	"pll0"
 #define CLK_CPU_PLL1	"pll1"
@@ -48,6 +49,7 @@
 #define CLK_MCLK		"mclk"
 #define CLK_BCLK		"bclk"
 #define CLK_PCLK		"pclk"
+#define CLK_XTI			"xticlk"
 
 /* 
 	normally, 
@@ -210,6 +212,8 @@ static struct clk_core clk_pll_dev[] = {
 	[ID_PCLK] = {.id = ID_PCLK,
 		.name = CLK_PCLK,
 		.div = 2},
+	[ID_XTI] = {.id = ID_XTI,
+		.div = 1},
 };
 
 static unsigned long get_mclk(void)
@@ -301,6 +305,11 @@ static unsigned long clk_pll_recalc_rate(struct clk_hw *hw, unsigned long rate)
 
 			rate = get_mclk();
 			rate = rate / CLK_MODE1_R_CLKDIVBCLK(cm1) / CLK_MODE1_R_CLKDIVPCLK(cm1);	
+		}
+		break;
+	case ID_XTI:
+		{
+			rate = ref_clk;
 		}
 		break;
 	default:
@@ -429,10 +438,17 @@ static void __init clk_pll_of_clocks_setup(struct device_node *node)
 				div = CLK_MODE1_R_CLKDIVPCLK(cm1);
 				pll = CLK_MODE1_R_CLKSELMCLK(cm1);
 				break;
+			case ID_XTI:
+				div = 1;
+				pll = 0;
+				break;
 		}
 		clk_data->div = div;
 		clk_data->pll = pll;
-		parent_name = clk_pll_dev[pll].name;
+		if (i != ID_XTI)
+			parent_name = clk_pll_dev[pll].name;
+		else
+			parent_name = "none";
 
 		clk = clk_pll_clock_register(clk_data->name, parent_name,
 				       &clk_data->hw, &clk_dev_ops, flags);
@@ -463,6 +479,7 @@ static void __init clk_pll_of_setup(struct device_node *node)
 	unsigned int pllin;
 	struct resource regs;
 
+	printk("%s enter\n", __func__);
 	if (of_address_to_resource(node, 0, &regs) < 0) {
 		pr_err("fail get clock pll regsister\n");
 		return;

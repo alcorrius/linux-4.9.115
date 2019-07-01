@@ -28,7 +28,21 @@
 
 #include <dt-bindings/clk/nxp2120-clk.h>
 
+#if (0)
+#define DBGENTER	printk("%s enter\n", __func__)
+#else
+#define DBGENTER
+#endif
+
 #define to_clk_dev(_hw) container_of(_hw, struct clk_dev, hw)
+
+struct def_clk_rate {
+	unsigned long pll0;
+	unsigned long pll1;
+	unsigned long pclk;
+	unsigned long bclk;
+	unsigned long xticlk;
+};
 
 struct clk_dev_peri {
 	const char *parent_name;
@@ -43,9 +57,9 @@ struct clk_dev_peri {
 	u32 clkgentype;
 	/* clock register */
 	int src_mask0;
-	int div_mask0;
 	int src_mask1;
-	int div_mask1;
+	int max_div0;
+	int max_div1;
 	int clkgen_mask;
 	/* clk src and div */
 	int div_src_0;
@@ -64,7 +78,8 @@ struct clk_dev {
 	struct clk *clk;
 	struct clk_hw hw;
 	struct clk_dev_peri *peri;
-	unsigned int rate;
+	unsigned long rate;
+
 	spinlock_t lock;
 };
 
@@ -72,6 +87,8 @@ struct clk_dev_map {
 	unsigned int con_enb;
 	unsigned int con_gen[4];
 };
+
+struct def_clk_rate defrates;
 
 #define MAX_DIVIDER ((1 << 8) - 1) /* 256, align 2 */
 
@@ -183,42 +200,317 @@ static inline long clk_dev_divide(long rate, long request, int align,
 
 static long clk_dev_bus_rate(struct clk_dev_peri *peri)
 {
-	struct clk *clk;
-	const char *name = NULL;
 	long rate = 0;
 
-	/* what mask it neede? */
-	name = "bclk";
-
-	if (name) {
-		clk = clk_get(NULL, name);
-		rate = clk_get_rate(clk);
-		clk_put(clk);
+	if (!peri->is_clkgen) {
+		if (peri->clkenbtype & CLKENB_MASK_BCLK)
+			return defrates.bclk;
+		else
+			return defrates.pclk;
 	}
 
-	return rate ?: -EINVAL;
+	return -EINVAL;
 }
 
-static long clk_dev_pll_rate(int no)
+static void update_defrate(void)
 {
 	struct clk *clk;
-	char name[16];
-	long rate = 0;
 
-	snprintf(name, sizeof(name), "pll%d", no);
-	clk = clk_get(NULL, name);
-	rate = clk_get_rate(clk);
-	clk_put(clk);
+	clk = clk_get(NULL, "pll0");
+	if (clk) {
+		defrates.pll0 = clk_get_rate(clk);
+		clk_put(clk);
+	}
+	
+	clk = clk_get(NULL, "pll1");
+	if (clk) {
+		defrates.pll1 = clk_get_rate(clk);
+		clk_put(clk);
+	}
+	clk = clk_get(NULL, "bclk");
+	if (clk) {
+		defrates.bclk = clk_get_rate(clk);
+		clk_put(clk);
+	}
+	clk = clk_get(NULL, "pclk");
+	if (clk) {
+		defrates.pclk = clk_get_rate(clk);
+		clk_put(clk);
+	}
+#if 0
+	clk = clk_get(NULL, "xticlk");
+	if (clk) {
+		defrates.xticlk = clk_get_rate(clk);
+		printk("xti_rate=%d\n", defrates.xticlk);
+		clk_put(clk);
+	}
+#endif
+	defrates.xticlk = 12000000UL;
+}
 
-	return rate;
+static int choose_closest_rate(unsigned long ck0,unsigned long ck1,unsigned long ck2,
+						unsigned long ck3,unsigned long t_rate,unsigned long *o_div)
+{
+	unsigned long tck, cks[4];
+	unsigned long tm, tp, tenp, cd;
+	int i, div;
+	cks[0] = ck0; cks[1] = ck1; cks[2] = ck2; cks[3] = ck3;
+
+	tenp = t_rate / 10;
+	tm = t_rate - tenp;
+	tp = t_rate + tenp;
+	for (i=0; i< 4; i++) {
+		if (cks[i] == 0)
+			break;
+		if ((cks[i] % t_rate) == 0) {
+			/* rate is very same as divided one. */
+			*o_div = cks[i] / t_rate;
+			return i;
+		}
+		/* how close we could do? */
+		div = cks[i] / t_rate;
+		tck = cks[i] / div;
+		cd = abs(t_rate - tck);
+		if ((cd > tm) && (cd < tp)) {
+			*o_div = div;
+			return i;
+		}
+	}
+	/* if we reach here, it failed. */
+	return -1;
+}
+
+static void dev_getrate(void *base, int step, int *src, int *div)
+{
+	struct clk_dev_map *reg = base;
+	unsigned int val = 0;
+
+	val = readl(&reg->con_gen[step]);
+	*src = (val >> 2) & 0x07;
+	*div = (val >> 5) & 0x0F;
+}
+
+static long dev_recalc_rate(struct clk_hw *hw, unsigned long rate)
+{
+	struct clk_dev_peri *peri = ((struct clk_dev *)to_clk_dev(hw))->peri;
+	int div;
+	int src;
+	unsigned long new_rate = 0;
+
+	if (!peri->is_clkgen)
+		return clk_dev_bus_rate(peri);
+	/* ksw : does this want to get div and src only?. */
+
+	/* Does clk gen shave second generator? use it. */
+	{
+		/* if we don't have second generator, took first gen only */
+		dev_getrate(peri->base, 0, &src, &div);
+		switch (peri->clkgentype & 0x0F) {
+			case CLKGEN_TYPE_PLL0_PLL1_SVLK_PSVLCK_IPSVCLK_AVCLK_ISVCLK	:
+				/* dpc use tis clock. */
+				switch (src) {
+					case 0:
+						new_rate = defrates.pll0;
+						break;
+					case 1:
+						new_rate = defrates.pll1;
+						break;
+					case 2:
+					case 3:
+						// some value ?
+						new_rate = 10000000;
+						break;
+					default:
+						new_rate = 0;
+				}
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1_XTI:
+				/* only PPM use this clk */
+				switch (src) {
+					case 0:
+						new_rate = defrates.pll0;
+						break;
+					case 1:
+						new_rate = defrates.pll1;
+						break;
+					case 2:
+					case 3:
+						// some value ?
+						new_rate = 10000000;
+						break;
+					default:
+						new_rate = 0;
+				}
+				break;
+			case CLKGEN_TYPE_EXTCLK:
+				/* only USB dev and host use this type. */
+				src = 3;
+				new_rate = 480000000;
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK_AV_IAV:
+				/* What do we know about AVClock ? */
+				switch (src) {
+					case 0:
+						new_rate = defrates.pll0;
+						break;
+					case 1:
+						new_rate = defrates.pll1;
+						break;
+					case 2:
+					case 3:
+						// some value ?
+						new_rate = 10000000;
+						break;
+					default:
+						new_rate = 0;
+				}
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK:
+				/* we my choose ICLK or IICLK */
+				switch (src) {
+					case 0:
+						new_rate = defrates.pll0;
+						break;
+					case 1:
+						new_rate = defrates.pll1;
+						break;
+					case 2:
+					case 3:
+						// some value ?
+						new_rate = 10000000;
+						break;
+					default:
+						new_rate = 0;
+				}
+				
+				break;
+			case CLKGEN_TYPE_PCLK_PLL0_PLL1:
+				/* we can choose PCLK, PLL0 and PLL1 */
+				dev_getrate(peri->base, 0, &src, &div);
+				switch (src) {
+					case 0:
+						new_rate = defrates.pclk;
+						break;
+					case 1:
+						new_rate = defrates.pll0;
+						break;
+					case 2:
+						new_rate = defrates.pll1;
+						break;
+					default:
+						new_rate = 0;
+				}
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1:
+				/* we can only choose PLL0 and PLL1 */
+				switch (src) {
+					case 0:
+						new_rate = defrates.pclk;
+						break;
+					case 1:
+						new_rate = defrates.pll0;
+						break;
+					default:
+						new_rate = 0;
+				}
+				break;
+			default:
+				src = -1;
+		}
+		/* if sel is not valid, we are failed. */
+		if (src < 0)
+			return 0;
+		/* check div could not handle */		
+		new_rate = new_rate / (div + 1);
+	}
+	if ((peri->clkgentype & 0xFF00) > CLKGEN_TYPE_GEN0L_GEN0H) {
+		dev_getrate(peri->base, 2, &src, &div);
+		switch (peri->clkgentype & 0x0F) {
+			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK_AV_IAV_GEN0:
+				switch (src) {
+					case 0:
+						new_rate = defrates.pclk;
+						break;
+					case 1:
+						new_rate = defrates.pll0;
+						break;
+					case 7:
+						// last rate
+						break;
+					default:
+						new_rate = 0;
+				}
+				new_rate = new_rate / (div + 1);
+				break;
+			default:
+				;
+		}
+	}
+
+	return new_rate;
 }
 
 static long dev_round_rate(struct clk_hw *hw, unsigned long rate)
 {
 	struct clk_dev_peri *peri = ((struct clk_dev *)to_clk_dev(hw))->peri;
-	unsigned long request = rate, new_rate = 0;
+	int out_div;
+	int sel=-1;
+	unsigned long new_rate = 0;
 
-	/* ksw : I don't implement this yet. */
+	if (!peri->is_clkgen)
+		return clk_dev_bus_rate(peri);
+	/* ksw : does this want to get div and src only?. */
+
+	/* Does clk gen shave second generator? use it. */
+	{
+		/* if we don't have second generator, took first gen only */
+		switch (peri->clkgentype & 0x0F) {
+			case CLKGEN_TYPE_PLL0_PLL1_SVLK_PSVLCK_IPSVCLK_AVCLK_ISVCLK	:
+				/* dpc use tis clock. */
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1_XTI:
+				/* only PPM use this clk */
+				sel = choose_closest_rate(defrates.pll0, defrates.pll1, defrates.xticlk, 0, rate, &out_div);
+				break;
+			case CLKGEN_TYPE_EXTCLK:
+				/* only USB dev and host use this type. */
+				sel = 3;
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK_AV_IAV:
+				/* What do we know about AVClock ? */
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK:
+				/* we my choose ICLK or IICLK */
+				sel = choose_closest_rate(defrates.pll0, defrates.pll1, 0, 0, rate, &out_div);
+				break;
+			case CLKGEN_TYPE_PCLK_PLL0_PLL1:
+				/* we can choose PCLK, PLL0 and PLL1 */
+				sel = choose_closest_rate(defrates.pclk, defrates.pll0, defrates.pll1, 0, rate, &out_div);
+				break;
+			case CLKGEN_TYPE_PLL0_PLL1:
+				/* we can only choose PLL0 and PLL1 */
+				sel = choose_closest_rate(defrates.pll0, defrates.pll1, 0, 0, rate, &out_div);
+				break;
+			default:
+				sel = -1;				
+		}
+		/* if sel is not valid, we are failed. */
+		if (sel < 0)
+			return 0;
+		/* check div could not handle */
+		if (out_div > peri->max_div0)
+			return 0;
+		peri->div_src_0 = sel;
+		peri->div_val_0 = out_div;
+		new_rate = rate / out_div;
+	}
+	if ((peri->clkgentype & 0xFF00) > CLKGEN_TYPE_GEN0L_GEN0H) {
+		switch (peri->clkgentype & 0x0F) {
+			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK_AV_IAV_GEN0:
+			default:
+				;
+		}
+	} 
 
 	return new_rate;
 }
@@ -268,6 +560,7 @@ static int clk_dev_enable(struct clk_hw *hw)
 	struct clk_dev_peri *peri = ((struct clk_dev *)to_clk_dev(hw))->peri;
 	int i = 0, inv = 0;
 
+	DBGENTER;
 	pr_debug("clk: %s enable (BCLK=%s, PCLK=%s)\n", peri->name,
 		 peri->clkenbtype & CLKENB_MASK_BCLK ? "ON" : "PASS",
 		 peri->clkenbtype & CLKENB_MASK_BCLK ? "ON" : "PASS");
@@ -317,6 +610,7 @@ static void clk_dev_disable(struct clk_hw *hw)
 {
 	struct clk_dev_peri *peri = ((struct clk_dev *)to_clk_dev(hw))->peri;
 
+	DBGENTER;
 	pr_debug("clk: %s disable\n", peri->name);
 
 	if (peri->clkenbtype & CLKENB_MASK_BCLK)
@@ -325,7 +619,7 @@ static void clk_dev_disable(struct clk_hw *hw)
 	if (peri->clkenbtype & CLKENB_MASK_PCLK)
 		clk_dev_pclk((void *)peri->base, 0);
 
-	clk_dev_rate((void *)peri->base, 0, 7, 256, peri->div_mask0); /* for power save */
+	//clk_dev_rate((void *)peri->base, 0, 7, 256, peri->div_mask0); /* for power save */
 	clk_dev_enb((void *)peri->base, 0);
 
 	peri->enable = false;
@@ -334,8 +628,13 @@ static void clk_dev_disable(struct clk_hw *hw)
 static unsigned long clk_dev_recalc_rate(struct clk_hw *hw, unsigned long rate)
 {
 	struct clk_dev_peri *peri = ((struct clk_dev *)to_clk_dev(hw))->peri;
+	long orate = dev_recalc_rate(hw, rate);
+
+	peri->rate = orate;
 
 	pr_debug("%s: name %s, (%lu)\n", __func__, peri->name, peri->rate);
+	/* read from current registers and set rate */
+
 	return peri->rate;
 }
 
@@ -382,7 +681,7 @@ struct clk *clk_dev_get_provider(struct of_phandle_args *clkspec, void *data)
 
 static void __init clk_dev_parse_device_data(struct device_node *np,
 					     struct clk_dev *clk_data,
-					     struct device *dev)
+					     struct device *dev, unsigned int pclk_rate)
 {
 	struct clk_dev_peri *peri = clk_data->peri;
 	struct resource res;
@@ -427,12 +726,13 @@ static void __init clk_dev_parse_device_data(struct device_node *np,
 	} else {
 		peri->is_clkgen = true;
 	}
+	pr_debug("clk name=%s is_clkgen=%d\n", peri->name, (int)peri->is_clkgen);
 	if (peri->is_clkgen) {
 		int mask0,mask1;
 		// We should get source
 		mask0 = 0;
 		mask1 = 0;
-		switch (peri->clkgentype & 0x0F) {
+		switch (peri->clkgentype & CLKGEN_MASK_SRC) {
 			case CLKGEN_TYPE_PLL0_PLL1:
 				mask0 = 3;
 				break;
@@ -445,7 +745,7 @@ static void __init clk_dev_parse_device_data(struct device_node *np,
 			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK_AV_IAV:
 				mask0 = BIT(0) | BIT(1) | BIT(3) | BIT(4) | BIT(5) | BIT(6);
 				if (peri->clkgentype & 0xF00) {
-					mask1 = mask1 = BIT(0) | BIT(1) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7);
+					mask1 = BIT(0) | BIT(1) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7);
 				}
 				break;
 			case CLKGEN_TYPE_PLL0_PLL1_ICLK_IICLK_AV_IAV_GEN0:
@@ -471,8 +771,8 @@ static void __init clk_dev_parse_device_data(struct device_node *np,
 		peri->clkgen_inv0 = !!(peri->clkgentype & CLKGEN_TYPE_OUTCLK_INV);
 		peri->clkgen_outen0 = !!(peri->clkgentype & CLKGEN_TYPE_OUTCLK_ENB);
 		peri->clkgen_mask = 1;
-		if (peri->clkgentype & 0xF00) {
-			switch (peri->clkgentype & 0xF00) {
+		if (peri->clkgentype & CLKGEN_MASK_GEN) {
+			switch (peri->clkgentype & CLKGEN_MASK_GEN) {
 				case CLKGEN_TYPE_GEN0L_GEN0H_GEN1:
 					peri->clkgen_mask = 7;
 					break;
@@ -487,6 +787,27 @@ static void __init clk_dev_parse_device_data(struct device_node *np,
 			peri->clkgen_inv1 = !!(peri->clkgentype & CLKGEN_TYPE_OUTCLK_INV);
 			peri->clkgen_outen1 = !!(peri->clkgentype & CLKGEN_TYPE_OUTCLK_ENB);
 		}
+		switch (peri->clkgentype & CLKGEN_MASK_DIV) {
+			case CLKGEN_TYPE_NODIV:
+				peri->max_div0 = 0;
+				peri->max_div1 = 0;
+				break;
+			case CLKGEN_TYPE_DIV_10_5:
+				peri->max_div0 = 64;
+				peri->max_div1 = 64;
+				break;
+			case CLKGEN_TYPE_DIV_9_5:
+				peri->max_div0 = 32;
+				peri->max_div1 = 32;
+				break;
+			case CLKGEN_TYPE_DIV_12_5:
+				peri->max_div0 = 256;
+				peri->max_div1 = 256;
+				break;
+		}
+	} else {
+		/* if we are not clkgen, then we are PCLK */
+		clk_data->rate = pclk_rate;
 	}
 	of_address_to_resource(np, 0, &res);
 
@@ -546,8 +867,13 @@ static void __init clk_dev_of_setup(struct device_node *node)
 	struct clk_dev *clk_data = NULL;
 	struct clk_dev_peri *peri = NULL;
 	struct clk *clk;
+	unsigned int pclk_rate;
 	int i = 0, size = (sizeof(*clk_data) + sizeof(*peri));
 	int num_clks;
+
+	pr_debug("%s enter\n", __func__);
+	/* We would get pll0, pll1, pclk, bclk and xticlk for convinience. */
+	update_defrate();
 
 	num_clks = of_get_child_count(node);
 	if (!num_clks) {
@@ -555,6 +881,7 @@ static void __init clk_dev_of_setup(struct device_node *node)
 		return;
 	}
 
+	pr_debug("num clks=%d\n", num_clks);
 	clk_data = kzalloc(size * num_clks, GFP_KERNEL);
 	if (!clk_data) {
 		WARN_ON(1);
@@ -565,7 +892,7 @@ static void __init clk_dev_of_setup(struct device_node *node)
 	for_each_child_of_node(node, np) {
 		clk_data[i].peri = &peri[i];
 		clk_data[i].node = np;
-		clk_dev_parse_device_data(np, &clk_data[i], NULL);
+		clk_dev_parse_device_data(np, &clk_data[i], NULL, defrates.pclk);
 		of_clk_add_provider(np, clk_dev_get_provider, &clk_data[i++]);
 	}
 

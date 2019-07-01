@@ -964,6 +964,7 @@ extern void nx_vip_restart_vip(struct nx_vip_control *ctrl);
 extern int nx_vip_change_resolution(struct nx_vip_control *ctrl, enum nx_vip_cam_res_t res);
 extern int nx_vip_alloc_output_memory(struct nx_vip_control *ctrl);
 extern void nx_vip_free_output_memory(struct nx_vip_out_frame *info);
+extern void nx_vip_free_frame_memory(struct nx_video_frame *frame);
 extern void nx_vip_set_output_address(struct nx_vip_control *ctrl);
 
 extern int _set_plane_size(struct nx_video_frame *frame, unsigned int sizes[]);
