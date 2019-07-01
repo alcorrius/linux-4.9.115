@@ -64,6 +64,7 @@
  *
 */
 #define NX_VIP_NAME "nx-vip"
+#define USE_VB2		0
 
 #define info(args...)   do { printk(KERN_INFO NX_VIP_NAME ": " args); } while (0)
 #define err(args...)    do { printk(KERN_ERR  NX_VIP_NAME ": " args); } while (0)
@@ -688,6 +689,8 @@ struct nx_video_frame {
 	u32	offs_v;
 	u32	width;
 	u32	height;
+	u32 scw;
+	u32 sch;
     int	nr_frames;
     int planes;
 	unsigned long		size[VIDEO_MAX_PLANES];
@@ -722,6 +725,8 @@ static inline void set_frame_crop(struct nx_video_frame *f,
 
 struct nx_vip_dt_data {
 	int		id;
+	u32		dma_mem;
+	u32		dma_mem_size;
 /*	int		dpc_device;	*/	/* display out module */
 	int		hor_align;
 	int		ver_align;
@@ -733,8 +738,8 @@ struct nx_vip_dt_data {
 	int		time_stamp_on;  /* time stamp on from MACH */
 
 //	struct nx_vip_camera_info *cam;
-
-    u32    external_sync;
+	u32		data_order;
+    u32     external_sync;
     u32     h_frontporch;
     u32     h_syncwidth;
     u32     h_backporch;
@@ -745,7 +750,9 @@ struct nx_vip_dt_data {
     bool   interlace;    
     u32		power_enable;    
     int 	max_width;
-    int 	max_height;    
+    int 	max_height;   
+    int 	def_width;
+    int 	def_height;
     struct gpio_desc *gpio_reset;   
 };
 
@@ -840,10 +847,12 @@ struct nx_vip_control {
     int                       use_clipper;
     int                       use_scaler;
     int                       streamon;
+#if USE_VB2
     struct nx_video_buffer	*cur_frm;
     //struct nx_video_buffer *next_frm;
 	struct vb2_queue	vb2_q;
 	struct list_head	bufs;
+#endif
 	struct v4l2_format fmt;	
     /* input */
     enum nx_vip_path_in_t     in_type;
@@ -966,6 +975,7 @@ extern int nx_vip_alloc_output_memory(struct nx_vip_control *ctrl);
 extern void nx_vip_free_output_memory(struct nx_vip_out_frame *info);
 extern void nx_vip_free_frame_memory(struct nx_video_frame *frame);
 extern void nx_vip_set_output_address(struct nx_vip_control *ctrl);
+extern int nx_vip_alloc_frame_memory(struct nx_vip_control *ctrl);
 
 extern int _set_plane_size(struct nx_video_frame *frame, unsigned int sizes[]);
 //extern void nx_vip_register_subdev(struct v4l2_subdev *sd);

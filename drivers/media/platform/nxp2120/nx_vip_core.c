@@ -45,17 +45,20 @@
 #include "nx_vip_core.h"
 
 #define BUFFER_X1280	0
+
+
 /* ksw : always initialize camera for camera test board */
 // #define CONFIG_ALWAYS_INITIALIZE_CAMERA
 
 
 struct nx_vip_config nx_vip;
 
+#if USE_VB2
 static struct nx_video_buffer *to_vip_vb(struct vb2_v4l2_buffer *vb)
 {
 	return container_of(vb, struct nx_video_buffer, vb);
 }
-
+#endif
 
 #define DUMP_REGISTER 1
 void dump_register(struct nx_vip_control *ctrl)
@@ -309,7 +312,7 @@ int nx_vip_alloc_output_memory(struct nx_vip_control *ctrl)
 //	start_offset = 0;//(dma_addr_t)boot_alloc_mem;
 	info("%s: start_offset=%X addr[0]=%X\n", __func__, info->addr[0].phys_y);
 
-	if (info->planes > 1) {
+	if (info->fmt->num_sw_planes > 1) {
 		// Then we must use Block memory buffer ?
 		start_offset |= 0x20000000;
 	}
@@ -359,7 +362,7 @@ int nx_vip_alloc_output_memory(struct nx_vip_control *ctrl)
 	So It can handle Max 1280 X 1024 Y data, 640 X 1024 CB, 640 X 1024 CR data.
 	
 */
-	if (info->planes > 1) {
+	if (info->fmt->num_sw_planes > 1) {
 		for (bank = 0; bank < info->nr_frames; bank++) {
 			
 			addr = &info->addr[bank];
@@ -446,7 +449,7 @@ int nx_vip_alloc_output_memory(struct nx_vip_control *ctrl)
 	
 */
 
-	if (info->planes > 1) {
+	if (info->fmt->num_sw_planes > 1) {
 		for (bank = 0; bank < info->nr_frames; bank++) {
 			addr = &info->addr[bank];
 			addr->lu_seg = addr->phys_y >> 24;
@@ -519,6 +522,187 @@ void nx_vip_free_output_memory(struct nx_vip_out_frame *info)
 }
 #endif
       
+
+int nx_vip_alloc_frame_memory(struct nx_vip_control *ctrl)
+{
+	struct nx_video_frame *info = &ctrl->cap_frame;
+	int bank;
+	int width =  ctrl->cap_frame.width, height = ctrl->cap_frame.height;
+	unsigned long start_offset = 0;
+	int buffer_changed = 0;
+	struct nx_vip_frame_addr *addr;
+	int cr_w, cr_h, cr_l, cr_t;
+	int top;
+//	void *boot_alloc_mem;
+//	boot_alloc_mem = (void*)0xA0000000;
+
+	printk("%s enter \n", __func__);
+	cr_w = ctrl->cap_frame.width;
+	cr_h = ctrl->cap_frame.height;
+	cr_l = ctrl->cap_frame.offs_h;
+	cr_t = ctrl->cap_frame.offs_v;	
+	printk("cr_w %d cr_h %d cr_l %d cr_t %d\n", cr_w, cr_h, cr_l, cr_t);
+	
+/*	cr_w = ctrl->v4l2.crop_current.width;
+	cr_h = ctrl->v4l2.crop_current.height;
+	cr_l = ctrl->v4l2.crop_current.left;
+	cr_t = ctrl->v4l2.crop_current.top;*/
+
+	if ((cr_w != width) && (cr_h != height))
+	{
+		ctrl->use_scaler = 1;
+#if BUFFER_X1280
+		ctrl->scaler->offset = 512 * 4096;
+#else
+		ctrl->scaler->offset = 1024 * 4096; // for 640X480 ->1024X512 for Y, 1024X512 for U,V
+#endif
+		//printk("cr_w=%d, width=%d cr_h=%d height=%d\n", cr_w, width, cr_h, height);
+	} else {
+		ctrl->use_scaler = 0;
+		//printk("cr_w=%d cr_h=%d\n", cr_w, cr_h);
+	}
+
+	/* But with reserved mem as bootmem area, we could avoid complexity
+	   of DMA coherent and memory leakage.
+	   
+	   2014. 02. 21. by KSW:
+		 4096 stride would give 4 buffers with 1024 horizontal resolution.
+		 Hence, 4Mbytes of buffer could handle 4 buffers with 1024X512 resolution.
+		 And without scaler/decimator, 640X480 could be handled.
+		 With Omnivision sensors, 640X480 and another 240 lines would need for color images,
+		 then another 480 lines for scaler/decimator.
+		 
+		 Is it enough for MPEG4 driver? No.
+		 MPEG4 uses minimum 14Mbyte...
+	*/
+//	info->buf_size = width * height * 2;
+
+	start_offset = (dma_addr_t)ctrl->vip_dt_data.dma_mem;
+	info("start_offset=%X addr[0]=%X\n",  start_offset,info->addr[0].phys_y);
+
+	if (info->fmt->num_sw_planes > 1) {
+		// Then we must use Block memory buffer ?
+		start_offset |= 0x20000000;
+	}
+	start_offset += ctrl->id * 8 * 1024 * 1024;
+	printk("ctrl->id  %d ,start_offset=0x%X\n", ctrl->id ,start_offset);
+	if (start_offset != info->addr[0].phys_y)
+		buffer_changed = 1;
+
+	info->addr[0].phys_y = start_offset;
+//	if (buffer_changed) {
+		if (NULL != info->addr[0].virt_y) {
+			iounmap(info->addr[0].virt_y);
+		}
+		info->addr[0].virt_y = ioremap(info->addr[0].phys_y, 8 * 1024 * 1024);
+//	}
+	info("alloc boot mem vir=%x, phys=%x\n", (unsigned int)info->addr[0].virt_y, (unsigned int)info->addr[0].phys_y);
+
+	printk("===============================\n");
+	info->nr_frames = 4;
+	for (bank = 1; bank < info->nr_frames; bank++) {
+		info->addr[bank].virt_y = info->addr[0].virt_y + 1024 * bank;
+		info->addr[bank].phys_y = info->addr[0].phys_y + 1024 * bank;
+		printk("virt_y 0x%X phys_y 0x%X\n", info->addr[bank].virt_y,info->addr[bank].phys_y);
+	}
+
+	info->scw = cr_w;
+	info->sch = cr_h;
+	printk("=========================cr_w %d, cr_h %d\n", cr_w, cr_h);
+	top = (start_offset >> 12) & 0xFFF;
+	
+/*
+	Buffer structures are:
+
+	|------------   4096 stride  -----------|
+	+----+----+----+----+----+----+----+----+
+	| 1024    | 1024    | 1024    | 1024    |
+	| LU(0)   | LU(1)   | LU(2)   | LU(3)   |
+	|         |         |         |         | 512
+	|         |         |         |         |
+	+----+----+----+----+----+----+----+----+
+	|CB0 |CR0 |CB1 |CR1 |CB2 |CR2 |CB3 |CR3 |
+	|    |    |    |    |    |    |    |    |
+	|    |    |    |    |    |    |    |    | 512
+	|    |    |    |    |    |    |    |    |
+	+----+----+----+----+----+----+----+----+
+	
+	
+	So It can handle Max 1024 X 512 Y data, 512 X 512 CB, 512 X 512 CR data.
+	
+*/
+
+	if (info->fmt->num_sw_planes > 1) {
+		for (bank = 0; bank < info->nr_frames; bank++) {
+			printk("info 0x%X\n", info);
+			addr = &info->addr[bank];
+			printk("info 0x%X\n", info);
+			printk("=======================addr 0x%X \n",addr);		
+			addr->lu_seg = addr->phys_y >> 24;
+			addr->cb_seg = addr->lu_seg;
+			addr->cr_seg = addr->lu_seg;
+			addr->lu_left  = bank * 1024;
+			addr->lu_top   = top;
+			addr->lu_right = cr_w + bank * 1024;
+			addr->lu_bottom= top + cr_h;
+			addr->cb_left  = bank * 1024;
+			addr->cb_top   = top + 512;
+			printk("=======================top 0x%X \n",top);	
+			if (ctrl->cap_frame.fmt->pixelformat == V4L2_PIX_FMT_YUV422P) {
+				printk("================422P\n");
+				addr->cb_right = cr_w / 2 + bank * 1024;
+				addr->cb_bottom= top + 512 + cr_h;
+				addr->cr_left  = 512 + bank * 1024;
+				addr->cr_top   = top + 512;
+				addr->cr_right = 512 + cr_w /2 + bank * 1024;
+				addr->cr_bottom= top + 512 + cr_h;
+			} else if (ctrl->cap_frame.fmt->pixelformat == V4L2_PIX_FMT_YUYV) {
+				printk("================YUYV\n");
+				addr->cb_right = cr_w / 2 + bank * 1024;
+				addr->cb_bottom= top + 512 + cr_h;
+				addr->cr_left  = 512 + bank * 1024;
+				addr->cr_top   = top + 512;
+				addr->cr_right = 512 + cr_w /2 + bank * 1024;
+				addr->cr_bottom= top + 512 + cr_h;
+			} else if (ctrl->cap_frame.fmt->pixelformat == V4L2_PIX_FMT_YUV444) {
+				printk("================444\n");
+				addr->cb_right = cr_w + bank * 1024;
+				addr->cb_bottom= top + 512 + cr_h;
+				addr->cr_left  = bank * 1024;
+				addr->cr_top   = top + 1024;
+				addr->cr_right = cr_w + bank * 1024;
+				addr->cr_bottom= top + 1024 + cr_h;
+			} else { /* YUV420 */
+				printk("================420\n");
+				addr->cb_right = cr_w / 2 + bank * 1024;
+				addr->cb_bottom= top + 512 + cr_h / 2;
+				addr->cr_left  = 512 + bank * 1024;
+				addr->cr_top   = top + 512;
+				addr->cr_right = 512 + cr_w / 2 + bank * 1024;
+				addr->cr_bottom= top + 512 + cr_h / 2;
+			}
+			if (ctrl->use_scaler) {
+				printk("use_scaler\n");
+				addr->src_addr_lu = ((addr->phys_y) & 0xFF000000) | (0 << 12) | (bank * 1024);
+				addr->src_addr_cb = ((addr->phys_y) & 0xFF000000) | (512 << 12) | (bank * 1024);
+				addr->src_addr_cr = ((addr->phys_y) & 0xFF000000) | (512 << 12) | ((bank * 1024) + 512);
+				addr->dst_addr_lu = ((addr->phys_y) & 0xFF000000) | (1024 << 12) | (bank * 1024);
+				addr->dst_addr_cb = ((addr->phys_y) & 0xFF000000) | ((512 + 1024) << 12)  | (bank * 1024);
+				addr->dst_addr_cr = ((addr->phys_y) & 0xFF000000) | ((512 + 1024) << 12) | ((bank * 1024) + 512);
+				addr->vir_addr_lu = addr->virt_y + ctrl->scaler->offset;
+			} else {
+				addr->vir_addr_lu = addr->virt_y;	
+			}
+			addr->vir_addr_cb = addr->vir_addr_lu + 512 * 4096;
+			addr->vir_addr_cr = addr->vir_addr_lu + 512 * 4096 + 512;
+		}
+	}
+
+
+	memset(info->addr[0].virt_y, 0, 8 * 1024 * 1024);
+	printk("%s exit\n", __func__);
+	return 0;
+}
   
 void nx_vip_free_frame_memory(struct nx_video_frame *frame)
 {
@@ -543,8 +727,8 @@ static int nx_capture_set_default_format(struct nx_vip_control *ctrl)
 	struct v4l2_format fmt = {
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 		.fmt.pix_mp = {
-			.width		= 640,
-			.height		= 480,
+			.width		= ctrl->vip_dt_data.def_width,
+			.height		= ctrl->vip_dt_data.def_height,
 			.pixelformat	= V4L2_PIX_FMT_YUV422P,
 			.field		= V4L2_FIELD_NONE,
 			.colorspace	= V4L2_COLORSPACE_SRGB,
@@ -601,8 +785,9 @@ static void nx_vip_setup_memory_region(struct nx_vip_control *ctrl, int setup_al
 	int offset = 0;
 	int ww, hh;
 	
-	printk("%s enter\n", __func__);
-//	printk("ctrl->cur_frm 0x%X \n", ctrl->cur_frm);                                               
+	printk("%s enter bank %d\n", __func__, bank);
+//	printk("ctrl->cur_frm 0x%X \n", ctrl->cur_frm);   
+#if USE_VB2
 	buf = ctrl->cur_frm;             
 //	printk("buf phys 0x%X \n", buf->paddr.y);
 	nx_video_buf_to_addr(ctrl, buf, &faddr, offset);     
@@ -610,6 +795,11 @@ static void nx_vip_setup_memory_region(struct nx_vip_control *ctrl, int setup_al
 	addr = &faddr;
 //	printk("addr 0x%X  addr->phys_y 0x%X faddr.phys_y 0x%X\n", addr, addr->phys_y, faddr.phys_y);
 	printk("lu_seg 0x%X cr_seg 0x%X cb_seg 0x%X \n", addr->lu_seg, addr->cr_seg, addr->cb_seg);
+#else
+	addr = &ctrl->cap_frame.addr[bank];   //  ????????????????????�̰ſ־ȵ�    
+    printk("addr 0x%X phy_y 0x%X ctrl->cap_frame.planes %d\n",addr, addr->phys_y, ctrl->cap_frame.planes);
+    
+#endif
 	if (ctrl->use_clipper)
 		clip_offset = 0;
 	ww = ctrl->cap_frame.width;
@@ -619,8 +809,7 @@ static void nx_vip_setup_memory_region(struct nx_vip_control *ctrl, int setup_al
 		ctrl->regs->CLIP_BASEADDRH = ctrl->cap_frame.addr[bank].phys_y >> 16;
 		ctrl->regs->CLIP_BASEADDRL = ctrl->cap_frame.addr[bank].phys_y & 0xFFFF;
 	}
-	// addr = &ctrl->cap_frame.addr[bank];     ????????????????????�̰ſ־ȵ�    
-//    printk("ctrl->cap_frame.planes %d\n", ctrl->cap_frame.planes);
+
     if (setup_all || ctrl->cap_frame.planes > 1) { 
 		if (setup_all) {                              
 			ctrl->regs->CLIP_LUSEG	 = addr->lu_seg;   
@@ -867,9 +1056,12 @@ static irqreturn_t nx_vip_irq(int irq, void *dev_id)
 {
 	struct nx_vip_control *ctrl = (struct nx_vip_control *)dev_id;
 	enum v4l2_field field;	
+#if USE_VB2
 	struct vb2_v4l2_buffer *vbuf = &ctrl->cur_frm->vb;
+
 	struct vb2_buffer *vb = &vbuf->vb2_buf;	
 	struct nx_video_buffer *buf = to_vip_vb(vbuf);
+#endif
 //	struct NX_GPIO_RegisterSet *gpioa = (struct NX_GPIO_RegisterSet *)IO_ADDRESS(PHY_BASEADDR_GPIO);
 //	struct NX_GPIO_RegisterSet *gpioa = (struct NX_GPIO_RegisterSet *)ioremap_nocache(PHY_BASEADDR_GPIO,40);
 	int status,st2;
@@ -879,7 +1071,7 @@ static irqreturn_t nx_vip_irq(int irq, void *dev_id)
 	st2 = ctrl->regs->VIP_ODINT;
 	ctrl->regs->VIP_HVINT |= 3; /* All pending IRQ clear */
 	ctrl->regs->VIP_ODINT |= 1;
-    spin_unlock(&ctrl->irqlock);
+
 //    printk("==========status %d st2 %d ctrl->use_clipper %d\n", status, st2,ctrl->use_clipper);
 	if ((status & 1)) { /* VSYNC */
 //	    if (IS_CAPTURE(ctrl)) {  
@@ -894,6 +1086,7 @@ static irqreturn_t nx_vip_irq(int irq, void *dev_id)
 					if (ctrl->buf_index >= ctrl->cap_frame.nr_frames)
 						ctrl->buf_index = 0;
 				}
+				spin_unlock(&ctrl->irqlock);				
 				nx_vip_setup_memory_region(ctrl, 0);
 		//		wake_up_interruptible(&ctrl->waitq);
 			}
@@ -911,9 +1104,10 @@ static irqreturn_t nx_vip_irq(int irq, void *dev_id)
 				if (ctrl->buf_index >= ctrl->cap_frame.nr_frames)
 					ctrl->buf_index = 0;
 			}
+			spin_unlock(&ctrl->irqlock);
 	        nx_vip_setup_memory_region(ctrl, 0);
 // buffer done
-			
+#if USE_VB2			
 			if(!list_empty(&ctrl->bufs)){
 				//vip_vb2_buffer_complete(ctrl);
 
@@ -926,6 +1120,8 @@ static irqreturn_t nx_vip_irq(int irq, void *dev_id)
 				
 			}
 			spin_unlock(&ctrl->irqlock);
+#endif
+		
 		/*	buf->dma_addr[0] = vb2_dma_contig_plane_dma_addr(&ctrl->cur_frm->vb.vb2_buf,0);
 			buf->dma_addr[1] = vb2_dma_contig_plane_dma_addr(&ctrl->cur_frm->vb.vb2_buf,1);
 			buf->dma_addr[2] =	vb2_dma_contig_plane_dma_addr(&ctrl->cur_frm->vb.vb2_buf,2);
@@ -1066,15 +1262,16 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 	int ret,val;
 	struct device *dev = &pdev->dev;
 	//struct device_node *np = dev->of_node;
-	struct device_node *np_remote, *np_scaler, *ep;
+	struct device_node *np_remote, *np_scaler, *ep, *np_reserved;
 //	struct nx_platform_vip *pdata = pdata;
 //	struct nx_vip_control *ctrl = ctrl;	
-	struct resource res, res_scaler;
+	struct resource res, res_scaler, res_reserved;
 	struct pinctrl_dev *pin;
 	struct pinctrl_state *state;
 	char clk_names[5] = {0, };
 	char reset_names[12] = {0, };
 	int retval;
+	unsigned int size;
 	u32 clk_base;
 	printk("================%s enter \n", __func__);
 	ctrl->vip_dt_data.id = id;
@@ -1098,6 +1295,22 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 	np = pdev->dev.of_node;
 	printk("np 0x%X pdev->dev.of_node 0x%X\n", np, pdev->dev.of_node);
 	
+	np_reserved = of_parse_phandle(np, "memory-region", 0);
+	if (!np_reserved) {
+		pr_err("=============================%s: memory-region of_parse_phandle failed.\n", __func__);
+	}
+	
+	ret = of_address_to_resource(np_reserved, 0, &res_reserved);
+	if (ret)
+		return ret;
+	
+	ctrl->vip_dt_data.dma_mem = res_reserved.start;
+	ctrl->vip_dt_data.dma_mem_size = resource_size(&res_reserved);
+	printk("dma_mem 0x%X dma_mem_size 0x%X\n", ctrl->vip_dt_data.dma_mem,ctrl->vip_dt_data.dma_mem_size);
+	
+	
+	/////////////////////////
+	
 	if (of_property_read_u32(np, "source_sel", &ctrl->source_sel)) {
 		dev_err(dev, "failed to get dt source_sel\n");
 		return -EINVAL;
@@ -1107,7 +1320,7 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 		dev_err(dev, "failed to get dt use_scaler\n");
 		return -EINVAL;
 	}	
-
+	printk("=============use_scaler %d\n",ctrl->use_scaler);
 	
 	/*ret = of_property_read_u32(np, "id", &id);
 	printk("id1 %d\n", id);*/
@@ -1240,11 +1453,16 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 	}
 	printk("ep name %s\n", ep->full_name);
 	
-	if (of_property_read_u32(ep, "external_sync",&val)) {
+	if (of_property_read_u32(ep, "data_order",&ctrl->vip_dt_data.data_order)) {
+		dev_err(dev, "failed to get dt data_order\n");
+		return -EINVAL;
+	}
+	printk("data_order %d\n",ctrl->vip_dt_data.data_order);	
+	if (of_property_read_u32(ep, "external_sync",&ctrl->vip_dt_data.external_sync)) {
 		dev_err(dev, "failed to get dt external_sync\n");
 		return -EINVAL;
 	}
-
+	printk("external_sync %d\n",ctrl->vip_dt_data.external_sync);	
 	
 	if (of_property_read_u32(ep, "h_frontporch", &ctrl->vip_dt_data.h_frontporch)) {
 		dev_err(dev, "failed to get dt h_frontporch\n");
@@ -1308,6 +1526,19 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 	}
 	printk("max_height %d\n",ctrl->vip_dt_data.max_height);	
 
+	if (of_property_read_u32(ep, "def_width", &ctrl->vip_dt_data.def_width)) {
+		dev_err(dev, "failed to get dt def_width\n");
+		return -EINVAL;
+	}
+	printk("def_width %d\n",ctrl->vip_dt_data.def_width);	
+	
+	if (of_property_read_u32(ep, "def_height", &ctrl->vip_dt_data.def_height)) {
+		dev_err(dev, "failed to get dt def_height\n");
+		return -EINVAL;
+	}
+	printk("def_height %d\n",ctrl->vip_dt_data.def_height);	
+	
+	
 	
 	/*np_node = of_find_compatible_node(NULL, NULL, "nexell,nxp2120-vip");
 	printk("np name1 %s np 0x%X\n", np_node->full_name, np_node);
@@ -1324,6 +1555,8 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 	}else{
 		printk("np_remote 0x%X full_name %s\n", np_remote->full_name);
 	}
+	
+	
 	if (1 == id) {
 		int num_sda, num_scl;
 		struct gpio_desc *sda, *scl;
@@ -1335,6 +1568,7 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct device_node *np,
 		scl = gpio_to_desc(num_scl);
 //		cap_i2c_init(sda, scl);
 	}
+	
 	
 	ctrl->asd[0] = devm_kzalloc(&pdev->dev, sizeof(struct v4l2_async_subdev),
 		                     GFP_KERNEL);
@@ -1364,7 +1598,10 @@ static void nx_vip_enable(struct nx_vip_control *ctrl)
 	ctrl->regs->VIPCLKENB = 0x0F; /* PCLK_ALWAYS and BCLK_DYNAMIC */
 	ctrl->regs->VIPCLKGEN[0][0] = 0x8000 | (0x03 << 2); /* OUTDISABLE, ICLK */
 	/* Configuration */
-	ctrl->regs->VIP_CONFIG = 0x02 | (0x00 << 2); /* 8bit interface, CrYCbY order */
+	ctrl->regs->VIP_CONFIG &= ~(0x03<<2);	
+	ctrl->regs->VIP_CONFIG = 0x02; //8bit interface,
+	ctrl->regs->VIP_CONFIG |= (ctrl->vip_dt_data.data_order << 2); // YCbYCr CrYCbY order
+
 	printk("%s exit\n", __func__);	
 }
 
@@ -1389,14 +1626,24 @@ static int nx_vip_unregister_controller(struct platform_device *pdev)
 	return 0;
 }
 
-static int nx_vip_mmap(struct file* filp, struct vm_area_struct *vma)
+static int nx_vip_mmap(struct file* file, struct vm_area_struct *vma)
 {
-	struct nx_vip_control *ctrl = filp->private_data;
-	struct nx_vip_out_frame *frame = &ctrl->out_frame;
+	struct nx_vip_control *ctrl = video_drvdata(file);//filp->private_data;
+	struct nx_video_frame *frame = &ctrl->cap_frame;
+	static int plane_n=0;
 
 	u32 size = vma->vm_end - vma->vm_start;
-	u32 pfn, total_size = frame->buf_size;
+	u32 pfn;
+	
+	//u32 total_size = frame->size[0]+frame->size[1]+frame->size[2];//buf_size; //??????????
+	u32 total_size = frame->size[plane_n];
 
+	//u32 total_size = frame->size[0];	
+	printk("%s enter size[%d] %d, size %d\n", __func__, plane_n, total_size, size );
+	plane_n++;
+	if(plane_n > ctrl->cap_frame.fmt->num_sw_planes){
+		plane_n = 0;
+	}	
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;//VM_RESERVED;
 
@@ -1417,7 +1664,7 @@ static int nx_vip_mmap(struct file* filp, struct vm_area_struct *vma)
 		err("mmap fail\n");
 		return -EINVAL;
 	}
-
+	printk("%s exit\n", __func__);
 	return 0;
 }
 
@@ -1427,8 +1674,10 @@ static unsigned int nx_vip_poll(struct file *file, struct poll_table_struct *wai
 	int ret;
 	u32 mask = 0;
 	pr_debug("%s enter\n", __func__);
-	ret = vb2_poll(&ctrl->vb2_q, file, wait);
 
+#if USE_VB2
+	ret = vb2_poll(&ctrl->vb2_q, file, wait);
+#endif
 	pr_debug("%s enter\n", __func__);
 	return ret;
 }
@@ -1443,7 +1692,8 @@ ssize_t nx_vip_read(struct file *file, char *buf, size_t count, loff_t *pos)
 	int ret;
 	int bank;
 	struct nx_vip_frame_addr *addr;
-
+	
+	printk("%s enter ctrl->cap_frame.width %d \n", __func__,ctrl->cap_frame.width  );
 #if 0
 	if (ctrl->use_scaler) {
 		if (!IS_IRQ_HANDLING(ctrl) || ctrl->sc_done != 3) {
@@ -1467,15 +1717,20 @@ ssize_t nx_vip_read(struct file *file, char *buf, size_t count, loff_t *pos)
 	}
 #endif
 #endif
-	end = min_t(size_t, ctrl->out_frame.buf_size, count);
+
+	//end = min_t(size_t, ctrl->cap_frame.buf_size, count);
+//	end = min_t(size_t, ctrl->cap_frame.size[0],count);//+ctrl->cap_frame.size[1]+ctrl->cap_frame.size[2], count); ///??????
+	end = min_t(size_t, ctrl->cap_frame.size[0]+ctrl->cap_frame.size[1]+ctrl->cap_frame.size[2], count); ///??????
 	//ptr = nx_vip_get_current_frame(ctrl);
+	spin_lock(&ctrl->irqlock);		
 	bank = (ctrl->buf_index-1);
 	if (bank < 0)
 		bank = ctrl->cap_frame.nr_frames-1;
+	
 	// dequeue buffer
 	ctrl->cap_frame.skip_frames[bank] = 1;
 	addr = &ctrl->cap_frame.addr[bank];
-
+	spin_unlock(&ctrl->irqlock);	
 	if (ctrl->use_scaler) {
 		// start scaler
 		//printk("USE SCALER!!\n");
@@ -1539,7 +1794,6 @@ ssize_t nx_vip_read(struct file *file, char *buf, size_t count, loff_t *pos)
 	} else {
 	    /* Copy Y component */
 
-
 	    for (i=0; i<hh; i++) {
 	        ret = copy_to_user(bf, pp, ww);
 	        bf += ww;
@@ -1579,7 +1833,7 @@ ssize_t nx_vip_read(struct file *file, char *buf, size_t count, loff_t *pos)
 		if (count >= (ctrl->cap_frame.buf_size + sizeof(unsigned long)))
 			ret = copy_to_user(bf, &ctrl->time_stamp[(ctrl->buf_index-1) & 0x03], sizeof(unsigned long));
 	}*/
-
+	printk("%s exit\n", __func__);
 	return end;
 }
 #endif
@@ -1743,6 +1997,7 @@ static int nx_vip_release(struct file *file)
 	printk("===============%s enter\n", __func__);
 
 	mutex_lock(&ctrl->lock);
+#if USE_VB2
 	last_open = v4l2_fh_is_singular_file(file);
 	ret = _vb2_fop_release(file, NULL);	
 	
@@ -1751,7 +2006,11 @@ static int nx_vip_release(struct file *file)
 		nx_vip_stop_vip(ctrl);
 		nx_vip_free_frame_memory(&ctrl->cap_frame);
 	}
-	
+#else
+	nx_vip_stop_vip(ctrl);
+	nx_vip_free_frame_memory(&ctrl->cap_frame);
+
+#endif
 
 //	free_irq(ctrl->irq, ctrl);
 
@@ -1761,7 +2020,7 @@ static int nx_vip_release(struct file *file)
 	return ret;
 }
 
-
+#if USE_VB2
 /*
  * nxp_vb2_queue_setup - Callback function for buffer setup.
  * @vq: vb2_queue ptr
@@ -1884,10 +2143,13 @@ static int nxp_vb2_buf_prepare(struct vb2_buffer *vb)
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);	          
 	struct nx_vip_control *ctrl = vb2_get_drv_priv(vb->vb2_queue);	
 	int index = vb->index;
+#if USE_VB2
 	struct nx_video_buffer *buf = to_vip_vb(vbuf);	
+	printk("vb 0x%X  vbuf 0x%X\n", vb, vbuf);	
+#endif
 	printk("%s enter index %d\n", __func__, index);
 	
-	printk("vb 0x%X  vbuf 0x%X\n", vb, vbuf);
+
 //	buf = (struct nx_video_buffer *)vb;
 	
 	__set_plane_size(ctrl, vb); 
@@ -2036,6 +2298,8 @@ static void nxp_stop_streaming(struct vb2_queue *vq)
 	printk("%s exit\n", __func__);	
 }
 #endif
+
+
 static const struct vb2_ops nxp_vb2_ops = {
 	.queue_setup		= nxp_vb2_queue_setup,
 /*	.buf_init		= mcam_vb_sg_buf_init,*/
@@ -2047,6 +2311,7 @@ static const struct vb2_ops nxp_vb2_ops = {
 	.wait_prepare		= vb2_ops_wait_prepare,
 	.wait_finish		= vb2_ops_wait_finish,
 };
+#endif //USE_VB2
 
 static const struct v4l2_file_operations nx_vip_fops = {
 	.owner = THIS_MODULE,
@@ -2057,7 +2322,11 @@ static const struct v4l2_file_operations nx_vip_fops = {
 /*	.write = nx_vip_write,*/
 	.poll = nx_vip_poll,	
 	.unlocked_ioctl	= video_ioctl2,		
+#if USE_VB2
 	.mmap = vb2_fop_mmap,//nx_vip_mmap,
+#else
+	.mmap = nx_vip_mmap,
+#endif
 
 };
 
@@ -2200,7 +2469,9 @@ struct nx_vip_control *nx_vip_register_controller(struct platform_device *pdev, 
 //	struct nx_platform_vip *pdata;
 	struct nx_vip_control *ctrl;
 	struct video_device *vdev;	
+#if USE_VB2
 	struct vb2_queue *vbq = NULL;
+#endif
 	char* s;
 
 
@@ -2218,9 +2489,12 @@ struct nx_vip_control *nx_vip_register_controller(struct platform_device *pdev, 
 	ctrl = &nx_vip.ctrl[id];
 	ctrl->id = id;
 	ctrl->dev = &pdev->dev;
+	/* scaler is only one, so two ctrl must reference same scaler structure.*/
+	ctrl->scaler = &nx_vip.scaler;	
 	
+	nx_vip_parse_dt(pdev, np, id, ctrl);	
 	//vb2_dma_contig_set_max_seg_size(&pdev->dev, DMA_BIT_MASK(32));
-	
+#if USE_VB2	
 	vbq = &ctrl->vb2_q;
 	printk("===========vbq 0x%X\n",vbq);	
 	vbq->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -2240,11 +2514,11 @@ struct nx_vip_control *nx_vip_register_controller(struct platform_device *pdev, 
 		pr_err("%s: failed to vb2_queue_init()\n", __func__);
 	}
 	
-	mutex_init(&ctrl->lock);
+
 	/* init video dma queues */
 	INIT_LIST_HEAD(&ctrl->bufs);	
-	
-
+#endif	
+	mutex_init(&ctrl->lock);
 	vdev = &ctrl->vdev;
 	
 	vdev->v4l2_dev = &ctrl->v4l2_dev;
@@ -2254,7 +2528,9 @@ struct nx_vip_control *nx_vip_register_controller(struct platform_device *pdev, 
 	vdev->minor = -1;
 	vdev->release = video_device_release_empty;	
 	vdev->lock = &ctrl->lock;
+#if USE_VB2
 	vdev->queue = vbq;
+#endif
 	video_set_drvdata(vdev, ctrl);
 	printk("================vdev 0x%X\n",(unsigned int)vdev);
 #if 0	
@@ -2278,8 +2554,7 @@ struct nx_vip_control *nx_vip_register_controller(struct platform_device *pdev, 
 	for (i=0; i< NX_VIP_MAX_FRAMES; i++)
 		ctrl->cap_frame.skip_frames[i] = 0;
 	
-	/* scaler is only one, so two ctrl must reference same scaler structure.*/
-	ctrl->scaler = &nx_vip.scaler;
+
 	ctrl->streamon = 0;
 
 	
@@ -2290,7 +2565,7 @@ struct nx_vip_control *nx_vip_register_controller(struct platform_device *pdev, 
 	if (id == 0)
 		init_waitqueue_head(&ctrl->scaler->waitq);
 */
-	nx_vip_parse_dt(pdev, np, id, ctrl);
+//	nx_vip_parse_dt(pdev, np, id, ctrl);
 
 #if 0	
 	/* get resource for io memory */

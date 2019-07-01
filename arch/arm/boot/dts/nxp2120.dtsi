@@ -79,7 +79,17 @@
 	};
 	
 	memory {
-		reg = <0x80000000 0xA0000000>;
+		reg = <0x80000000 0xE000000>;
+	};
+	
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		
+		vip_reserved: vip@8E000000 {
+			reg = <0x8E000000 0x1000000>;		
+		};	
 	};
 
 	cpm:cpm@C000F000 {
@@ -594,11 +604,14 @@
 		
 		audio: audio@C00D8000 {
 			compatible = "nexell,nxp2120-audio";
-			reg = <0xC000D800 0x3C0>;
+			reg = <0xC000D800 0x100>;
 			interrupts = <24>;
 			dmas = <&dma 0 24>, <&dma 0 25>, <&dma 0 26>, 
 					<&dma 0 27>, <&dma 0 28>, <&dma 0 29>;
 			dma-names = "pcmout", "spdif", "pcmin", "micin", "adc0", "adc1";
+			pinctrl-names = "i2s","ac97";
+			pinctrl-0 = <&i2s0_bus>;
+			pinctrl-1 = <&i2s0_bus_1>;
 		};
 
 		spdif_rx: spdifrx@C0011800 {
@@ -631,6 +644,7 @@
 			clock-names = "vipclk0";
 			clocks = <&vipclk0>;
 			module = <0>;
+			memory-region = <&vip_reserved>;	
 			status = "disabled";
 		};
 

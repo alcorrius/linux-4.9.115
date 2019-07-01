@@ -25,7 +25,7 @@
 	
 	memory {
 		device_type = "memory";
-		reg = <0x80000000 0x08000000>;/*0x10000000>;*/
+		reg = <0x80000000 0x0E000000>;/*0x10000000>;*/
 	};
 	
 	soc{
@@ -57,11 +57,12 @@
 			gpio_reset-gpios = <&gpio_a 4 0>;
 			id = <0>;
 			source_sel = <0>;
-			use_scaler = <1>;
-			data_order = <0>; 
+			use_scaler = <0>;
+
 			port {
 				vip0_ep: endpoint {
 					remote-endpoint = <&poa030>;
+					data_order = <0>; 
 					external_sync = <0>;
 					h_frontporch = <4>;
 					h_syncwidth = <4>;
@@ -73,7 +74,9 @@
 					interlace = <0>;
 					power_enable = <0>;// camera_power_enable;
 					max_width = <640>;
-					max_height = <480>;					
+					max_height = <480>;	
+					def_width = <320>;
+					def_height = <240>;	
 					/*hor_align = <1>;
 					ver_align = <1>;*/
 					buff_count = <4>;
@@ -240,12 +243,11 @@
 /*		monochrome = <1>;
 		def_ae = <1>;
 		def_exposure = <128>;*/
-		def_width = <640>;
-		def_height = <480>;
+
 
 		port {
 			poa030:endpoint{
-				remote-endpoint = <&vip0_ep>;
+				remote-endpoint = <&vip0_ep>;			
 			};
 		};
 	};	
@@ -306,7 +308,7 @@
 			clock_invert = <0>;
 			monochrome = <1>;
 			port = <1>; // NX_VIP_INPUTPORT_B;
-			data_order = <0>; // NXP_VIN_CBY0CRY1;
+			data_order = <2>; // NXP_VIN_CBY0CRY1;
 			interlace = <0>;
 			clk_rate = <27000000>;
 			late_power_down = <0>;
