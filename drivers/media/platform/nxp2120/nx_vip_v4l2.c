@@ -1,7 +1,10 @@
-/* linux/drivers/media/video/nexell/nx_vip_v4l2.c
+/* linux/drivers/media/platform/nxp2120/nx_vip_v4l2.c
  *
  * V4L2 interface support file for Nexell NXP2120 camera(VIP) driver
  *
+ * Copyright (c) 2019 I4VINE Inc.
+ * All right reserved by Juyoung Ryu <jyryu@i4vine.com>
+ 
  * Copyright (c) 2017 I4VINE corp.
  * All right reserved by Seungwoo Kim <ksw@i4vine.com>
  *
@@ -20,34 +23,11 @@
 #include <linux/delay.h>
 
 /* NXP SOC's registers */
-//#include <mach/platform.h>//
 #include "nx_vip_core.h"
 
 #define USE_SUBDEV_CALL	1
 
 
-static struct v4l2_input nx_vip_input_types[] = {
-	{
-		.index		= 0,
-		.name		= "External Camera Input",
-		.type		= V4L2_INPUT_TYPE_CAMERA,
-		.audioset	= 1,
-		.tuner		= 0,
-		.std		= V4L2_STD_PAL_BG | V4L2_STD_NTSC_M,
-		.status		= 0,
-	},
-};
-
-static struct v4l2_output nx_vip_output_types[] = {
-	{
-		.index		= 0,
-		.name		= "Memory Output",
-		.type		= V4L2_OUTPUT_TYPE_MEMORY,
-		.audioset	= 0,
-		.modulator	= 0,
-		.std		= 0,
-	},
-};
 
 const static struct v4l2_fmtdesc nx_vip_capture_formats[] = {
 	{
@@ -190,7 +170,7 @@ static int nx_vip_v4l2_querycap(struct file *file, void *fh,
 					struct v4l2_capability *cap)
 {
 	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
-	printk("############%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 	strncpy(cap->driver, "Nexell VIP Driver",sizeof(cap->driver)-1);
 	strncpy(cap->card, ctrl->pdev->name, sizeof(cap->card)-1);
 	strlcpy(cap->bus_info, "Nxp2120 AHB-bus",sizeof(cap->bus_info));
@@ -199,7 +179,7 @@ static int nx_vip_v4l2_querycap(struct file *file, void *fh,
 //	cap->capabilities = (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE); /* ksw : READWRITE ? */
 	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_READWRITE;
 	cap->capabilities =  cap->device_caps | V4L2_CAP_DEVICE_CAPS;
-	printk("############%s exit\n", __func__);
+	pr_debug("%s exit\n", __func__);
 	return 0;
 }
 
@@ -222,11 +202,12 @@ static int nx_vip_v4l2_g_fbuf(struct file *file, void *fh,
 	return 0;
 }
 
-static int nx_vip_v4l2_s_fbuf(struct file *filp, void *fh,
+static int nx_vip_v4l2_s_fbuf(struct file *file, void *fh,
 					struct v4l2_framebuffer *fb)
 {
-#if 0
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+#if 0	
 	struct v4l2_framebuffer *frmbuf = &(ctrl->v4l2.frmbuf);
 	int bpp;
 
@@ -245,10 +226,10 @@ static int nx_vip_v4l2_s_fbuf(struct file *filp, void *fh,
 	return 0;
 }
 
-static int nx_vip_v4l2_enum_fmt_vid_cap(struct file *filp, void *fh,
+static int nx_vip_v4l2_enum_fmt_vid_cap(struct file *file, void *fh,
 					struct v4l2_fmtdesc *f)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
 	int index = f->index;
 
 	if (index >= NX_VIP_MAX_CAPTURE_FORMATS)
@@ -291,12 +272,12 @@ static int nx_vip_v4l2_g_fmt_vid_cap_mplane(struct file *file, void *fh, struct 
 	struct nx_video_frame *frame = &ctrl->cap_frame;
 	int ret;
 	
-	printk("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 	if(f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
 		return -EINVAL;	
 	
 	ret = nx_fill_format(frame, f);
-	printk("%s exit\n", __func__);	
+	pr_debug("%s exit\n", __func__);	
 	return ret;
 }
 
@@ -555,7 +536,7 @@ int nx_capture_set_format(struct nx_vip_control *ctrl, struct v4l2_format *f)
 	}*/
 	
 	pr_debug("pix->pixelformat 0x%X pix->width %d, pix->height %d\n",pix->pixelformat,pix->width,pix->height);
-	printk("frame 0x%X\n", frame);
+	pr_debug("frame 0x%X\n", frame);
 	frame->fmt = nx_vip_try_format(&ctx, &pix->width, &pix->height, NULL,&pix->pixelformat);
 	
 	if(!frame->fmt)
@@ -575,7 +556,7 @@ int nx_capture_set_format(struct nx_vip_control *ctrl, struct v4l2_format *f)
 	//set_frame_crop(&ctx->cap_frame, 0, 0, pix->width, pix->height);
 
     _set_plane_size(frame, sizes);
-    printk("frame->size [0] %d [1] %d [2] %d\n",frame->size[0], frame->size[1], frame->size[2]); 
+    pr_debug("frame->size [0] %d [1] %d [2] %d\n",frame->size[0], frame->size[1], frame->size[2]); 
 #if !USE_VB2
     if(frame->addr[0].virt_y == NULL){
     	nx_vip_alloc_frame_memory(ctrl);
@@ -590,7 +571,7 @@ static int nx_vip_v4l2_s_fmt_vid_cap_mplane(struct file *file, void *fh, struct 
 	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
     struct v4l2_subdev_format format;	
     int ret;
-	printk("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 	format.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	format.format.width  = f->fmt.pix_mp.width;
 	format.format.height = f->fmt.pix_mp.height;
@@ -606,7 +587,7 @@ static int nx_vip_v4l2_s_fmt_vid_cap_mplane(struct file *file, void *fh, struct 
 	
 	
 //	nx_vip_set_output_frame(ctrl, &f->fmt.pix_mp);
-	printk("%s exit\n", __func__);
+	pr_debug("%s exit\n", __func__);
 	return ret;
 }
 
@@ -616,7 +597,7 @@ static int nx_vip_v4l2_s_fmt_vid_cap(struct file *file, void *fh,
 	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
     struct v4l2_subdev_format format;	
 	//struct v4l2_framebuffer *frmbuf = &(ctrl->v4l2.frmbuf);
-	int depth;
+//	int depth;
 	int ret;
 
 	memset(&format, 0, sizeof(format));
@@ -635,89 +616,7 @@ static int nx_vip_v4l2_s_fmt_vid_cap(struct file *file, void *fh,
 
 	pr_debug("%s exit\n",__func__);	
 	return ret;
-#if 0
-	//frmbuf.fmt = f->fmt.pix;
-	printk("%s: ww=%d hh=%d \n", __func__, f->fmt.pix.width, f->fmt.pix.height);
-	f->fmt.pix.priv = 1; /* We don't use Input Frame Format... Yet. */
-	if (f->fmt.pix.priv == V4L2_FMT_IN)
-		depth = nx_vip_set_input_frame(ctrl, &f->fmt.pix);
-	else {
-		// if stream on then we should stream off first.
-		if (ctrl->streamon) {
-			nxp_stream_off(ctrl);
-		}
-		// Check if camera input is same as output frame
-		if ((f->fmt.pix.width != ctrl->cam_ex->cur_width) ||
-			(f->fmt.pix.height != ctrl->cam_ex->cur_height)) {
-			int ww = f->fmt.pix.width;
-			int hh = f->fmt.pix.height;
-			struct nx_vip_camera_ex *cam = ctrl->cam_ex;
-			int ret;
-#if USE_SUBDEV_CALL
-			//struct v4l2_format fmt;
-			struct v4l2_subdev_format fmt;
-			struct v4l2_subdev_fh *subdev_fh = to_v4l2_subdev_fh(fh);
-	
-			fmt.which               = 0;
-			fmt.pad                 = 0;
-			fmt.format.width     = ww;
-			fmt.format.height    = hh;
-			
-			/* Now camera can handle this resolution */
-			ret = v4l2_subdev_call(cam->subdev, pad, set_fmt, subdev_fh, &fmt);
-			if (0 == ret) {
-				// success then crop width should be adjustted.
-				printk("Success! then crop width should be adjustted.\n");
-				cam->cur_width = ww;
-				cam->cur_height = hh;
-				ctrl->v4l2.crop_current.left = 0;
-				ctrl->v4l2.crop_current.top = 0;
-				ctrl->v4l2.crop_current.width = cam->cur_width;
-				ctrl->v4l2.crop_current.height = cam->cur_height;
-				ctrl->in_frame.width = cam->cur_width;
-				ctrl->in_frame.height = cam->cur_height;
-			}
-#else	
-			int res;
-	
-			if ((ww > 1024) && (ww <= 1280)) {
-				// try SXGA
-				res = CAM_RES_SXGA;
-			} else
-			if ((ww > 640) && (ww <= 1024)) {
-				// try XGA
-				res = CAM_RES_XGA;
-			} else
-			if ((ww > 320) && (ww <= 640)) {
-				// try VGA
-				res = CAM_RES_VGA;
-			} else
-			if ((ww > 160) && (ww <= 320)) {
-				// try QVGA
-				res = CAM_RES_QVGA;
-			} else {
-				return -EINVAL;
-			}
-			ret = nx_vip_change_resolution(ctrl, res);
-			if (0 == ret) {
-				ctrl->v4l2.crop_current.left = 0;
-				ctrl->v4l2.crop_current.top = 0;
-				ctrl->v4l2.crop_current.width = cam->cur_width;
-				ctrl->v4l2.crop_current.height = cam->cur_height;
-			}
-#endif
-		}
 
-		depth = nx_vip_set_output_frame(ctrl, &f->fmt.pix);
-		if (depth > 0) {
-		    nx_vip_v4l2_streamon(filp, (void *)ctrl, V4L2_BUF_TYPE_VIDEO_CAPTURE);
-		}
-	}
-
-	return (depth > 0) ? 0 : -EINVAL;
-
-	return 0;
-#endif
 }
 
 static int nx_vip_v4l2_try_fmt_vid_cap(struct file *filp, void *fh,
@@ -725,7 +624,7 @@ static int nx_vip_v4l2_try_fmt_vid_cap(struct file *filp, void *fh,
 {
 	return 0;
 }
-
+#if 0
 static int nx_vip_v4l2_try_fmt_overlay(struct file *filp, void *fh,
 					  struct v4l2_format *f)
 {
@@ -754,14 +653,15 @@ static int nx_vip_v4l2_overlay(struct file *filp, void *fh, unsigned int i)
 #endif
 	return 0;
 }
+#endif
 
 #define V4L2_CID_CAMERA_ID (V4L2_CID_PRIVATE_BASE + 0x10)
 
-static int nx_vip_v4l2_g_ctrl(struct file *filp, void *fh,
+static int nx_vip_v4l2_g_ctrl(struct file *file, void *fh,
 					struct v4l2_control *c)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
-	struct nx_vip_out_frame *frame = &ctrl->out_frame;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+	struct nx_video_frame *frame = &ctrl->cap_frame;
 
 	switch (c->id) {
 	case V4L2_CID_OUTPUT_ADDR:
@@ -779,10 +679,10 @@ static int nx_vip_v4l2_g_ctrl(struct file *filp, void *fh,
 	return 0;
 }
 
-static int nx_vip_v4l2_s_ctrl(struct file *filp, void *fh,
+static int nx_vip_v4l2_s_ctrl(struct file *file, void *fh,
 					struct v4l2_control *c)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
 	//struct nx_vip_out_frame *frame = &ctrl->out_frame;
 	//struct nx_vip_window_offset *offset = &ctrl->in_cam->offset;
 
@@ -996,14 +896,14 @@ static int nx_vip_v4l2_s_ctrl(struct file *filp, void *fh,
 void nxp_stream_on(struct nx_vip_control *ctrl)
 {
 	int i;
-	printk("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 	for (i=0; i< NX_VIP_MAX_FRAMES; i++)
 		ctrl->cap_frame.skip_frames[i] = 0;
 //	FSET_STOP(ctrl);
 //	FSET_IRQ_NORMAL(ctrl);
 	nx_vip_start_vip(ctrl);
 	ctrl->streamon = 1;
-	printk("%s exit\n", __func__);	
+	pr_debug("%s exit\n", __func__);	
 }
 
 void nxp_stream_off(struct nx_vip_control *ctrl)
@@ -1026,7 +926,7 @@ int nx_vip_v4l2_streamon(struct file *file, void *fh,
 #endif
 	struct v4l2_subdev *subdev = ctrl->subdev;	
 	int ret = 0;
-	printk("%s enter ctrl->id %d\n", __func__, ctrl->id);
+	pr_debug("%s enter ctrl->id %d\n", __func__, ctrl->id);
 	if (i != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
 		return -EINVAL;
 
@@ -1041,15 +941,14 @@ int nx_vip_v4l2_streamon(struct file *file, void *fh,
 #if USE_VB2			  
     ret = vb2_streamon(vq, i);
 #endif
-	printk("capture start=%d\n", ret);    
+	pr_debug("capture start=%d\n", ret);    
     if (!ret) 
         ret = v4l2_subdev_call(subdev, video, s_stream, 1); 
     
     if (!ret)
 		nxp_stream_on(ctrl);
 	
-	
-	printk("%s exit\n", __func__);
+	pr_debug("%s exit\n", __func__);
 	return 0;
 }
 
@@ -1081,21 +980,21 @@ int nx_vip_v4l2_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 	return 0;
 }
 
-static int nx_vip_v4l2_g_input(struct file *filp, void *fh,
+static int nx_vip_v4l2_g_input(struct file *file, void *fh,
 					unsigned int *i)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
-
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+#if 0
 	*i = ctrl->v4l2.input->index;
-
+#endif
 	return 0;
 }
 
-static int nx_vip_v4l2_s_input(struct file *filp, void *fh,
+static int nx_vip_v4l2_s_input(struct file *file, void *fh,
 					unsigned int i)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
-
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+#if 0
 	if (i >= NX_VIP_MAX_INPUT_TYPES)
 		return -EINVAL;
 
@@ -1105,25 +1004,25 @@ static int nx_vip_v4l2_s_input(struct file *filp, void *fh,
 		ctrl->in_type = PATH_IN_ITU_CAMERA;
 	else
 		ctrl->in_type = PATH_IN_DMA;
-
+#endif
 	return 0;
 }
 
-static int nx_vip_v4l2_g_output(struct file *filp, void *fh,
+static int nx_vip_v4l2_g_output(struct file *file, void *fh,
 					unsigned int *i)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
-
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+#if 0
 	*i = ctrl->v4l2.output->index;
-
+#endif
 	return 0;
 }
 
-static int nx_vip_v4l2_s_output(struct file *filp, void *fh,
+static int nx_vip_v4l2_s_output(struct file *file, void *fh,
 					unsigned int i)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
-
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+#if 0
 	if (i >= NX_VIP_MAX_OUTPUT_TYPES)
 		return -EINVAL;
 
@@ -1133,32 +1032,34 @@ static int nx_vip_v4l2_s_output(struct file *filp, void *fh,
 		ctrl->out_type = PATH_OUT_DMA;
 	else
 		ctrl->out_type = PATH_OUT_LCDFIFO;
-
+#endif
 	return 0;
 }
 
 static int nx_vip_v4l2_enum_input(struct file *filp, void *fh,
 					struct v4l2_input *i)
 {
+#if 0
 	if (i->index >= NX_VIP_MAX_INPUT_TYPES)
 		return -EINVAL;
 
 	memcpy(i, &nx_vip_input_types[i->index], sizeof(struct v4l2_input));
-
+#endif
 	return 0;
 }
 
 static int nx_vip_v4l2_enum_output(struct file *filp, void *fh,
 					struct v4l2_output *o)
 {
+#if 0
 	if ((o->index) >= NX_VIP_MAX_OUTPUT_TYPES)
 		return -EINVAL;
 
 	memcpy(o, &nx_vip_output_types[o->index], sizeof(struct v4l2_output));
-
+#endif
 	return 0;
 }
-
+#if 0
 static int nx_vip_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffers *b)
 {
     struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
@@ -1167,7 +1068,7 @@ static int nx_vip_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestb
 #endif
 	int ret;
 	
-	printk("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 	if (b->memory != V4L2_MEMORY_MMAP) {
 		err("V4L2_MEMORY_MMAP is only supported\n");
 		return -EINVAL;
@@ -1179,7 +1080,7 @@ static int nx_vip_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestb
 	
 	ret = vb2_reqbufs(vq, b);
 #endif
-	printk("%s exit\n", __func__);	
+	pr_debug("%s exit\n", __func__);	
 	
 #if 0
 	/* control user input */
@@ -1189,7 +1090,7 @@ static int nx_vip_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestb
 		b->count = 1;
 /* We should allocate framebuffer for read.? */
 	if (NULL == ctrl->out_frame.addr[0].virt_y) {
-		printk("alloc frame buffer for output, format=%x, width=%d, height=%d\n",
+		pr_debug("alloc frame buffer for output, format=%x, width=%d, height=%d\n",
 			ctrl->out_frame.format,
 			ctrl->out_frame.width,
 			ctrl->out_frame.height);
@@ -1203,23 +1104,23 @@ static int nx_vip_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestb
 	return ret;
 }
 
-static int nx_vip_v4l2_querybuf(struct file *filp, void *fh,
+static int nx_vip_v4l2_querybuf(struct file *file, void *fh,
 					struct v4l2_buffer *b)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
-	struct nx_vip_out_frame *info = &ctrl->out_frame;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
+	struct nx_video_frame *info = &ctrl->cap_frame;
 
-	printk("b->type = %x %x\n", b->type, V4L2_BUF_TYPE_VIDEO_CAPTURE);
+	pr_debug("b->type = %x %x\n", b->type, V4L2_BUF_TYPE_VIDEO_CAPTURE);
 	if (b->type != V4L2_BUF_TYPE_VIDEO_OVERLAY &&
 		b->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 
-	printk("b->memory = %x %x\n", b->memory, V4L2_MEMORY_MMAP); 
+	pr_debug("b->memory = %x %x\n", b->memory, V4L2_MEMORY_MMAP); 
 	if (b->memory != V4L2_MEMORY_MMAP)
 		return -EINVAL;
 
-	printk("v4l2 querybuf : buf size = %d\n", ctrl->out_frame.buf_size);
-	b->length = ctrl->out_frame.buf_size;
+	pr_debug("v4l2 querybuf : buf size = %d\n", ctrl->cap_frame.buf_size);
+	b->length = ctrl->cap_frame.buf_size;
 
 	/*
 	 * NOTE: we use the m.offset as an index for multiple frames out.
@@ -1228,7 +1129,7 @@ static int nx_vip_v4l2_querybuf(struct file *filp, void *fh,
 	 * The index value used to find out which frame user wants to mmap.
 	 */
 	b->m.offset = info->addr[b->index].phys_y;
-	printk("offset = %x, index = %d\n", b->m.offset, b->index);
+	pr_debug("offset = %x, index = %d\n", b->m.offset, b->index);
 
 	return 0;
 }
@@ -1241,7 +1142,7 @@ static int nx_vip_v4l2_qbuf(struct file *file, void *fh,
 	struct vb2_queue *vq;	
 	int index = b->index;	
 	int ret;
-	printk("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 #if USE_VB2 
 	vq = &ctrl->vb2_q;
 	if (vq->num_buffers <= 0)
@@ -1258,7 +1159,7 @@ static int nx_vip_v4l2_qbuf(struct file *file, void *fh,
 		return 0;
 	}
 #endif	
-	printk("%s exit\n", __func__);	
+	pr_debug("%s exit\n", __func__);	
 	return -EINVAL;
 }
 
@@ -1270,7 +1171,7 @@ static int nx_vip_v4l2_dqbuf(struct file *file, void *fh,
 	struct vb2_queue *vq;	
 	int index;
 	int ret;
-	printk("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 #if USE_VB2
 	vq = &ctrl->vb2_q;
 //	if (wait_event_interruptible(ctrl->waitq, IS_IRQ_HANDLING(ctrl)))
@@ -1279,15 +1180,15 @@ static int nx_vip_v4l2_dqbuf(struct file *file, void *fh,
 //	FSET_STOP(ctrl);
 	ret = vb2_dqbuf(vq, b, file->f_flags & O_NONBLOCK);	
 #endif
-	printk("%s exit\n", __func__);
+	pr_debug("%s exit\n", __func__);
 	return 0;
 }
-
+#endif
 static int nx_vip_v4l2_cropcap(struct file *file, void *fh,
 					struct v4l2_cropcap *a)
 {
 	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
-	printk("===============%s enter\n", __func__);
+	pr_debug("===============%s enter\n", __func__);
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE &&
 		a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) //a->type != V4L2_BUF_TYPE_VIDEO_OVERLAY)
 		return -EINVAL;
@@ -1308,7 +1209,7 @@ static int nx_vip_v4l2_cropcap(struct file *file, void *fh,
 	ctrl->v4l2.crop_defrect.width = a->defrect.width;//ctrl->vip_dt_data.def_width;//640;//ctrl->cam_ex->def_width;
 	ctrl->v4l2.crop_defrect.height = a->defrect.height;//ctrl->vip_dt_data.def_height;//480;//ctrl->cam_ex->def_height;
 
-	printk("camera's def value w=%d h=%d\n", ctrl->v4l2.crop_defrect.width, ctrl->v4l2.crop_defrect.height);
+	pr_debug("camera's def value w=%d h=%d\n", ctrl->v4l2.crop_defrect.width, ctrl->v4l2.crop_defrect.height);
 	/* set current crop value to default value. */
 	ctrl->v4l2.crop_current.left = ctrl->v4l2.crop_defrect.left;
 	ctrl->v4l2.crop_current.top = ctrl->v4l2.crop_defrect.top;
@@ -1317,14 +1218,14 @@ static int nx_vip_v4l2_cropcap(struct file *file, void *fh,
 
 	a->bounds = ctrl->v4l2.crop_bounds;
 	a->defrect = ctrl->v4l2.crop_defrect;
-	printk("%s exit\n", __func__);
+	pr_debug("%s exit\n", __func__);
 	return 0;
 }
 
-static int nx_vip_v4l2_g_crop(struct file *filp, void *fh,
+static int nx_vip_v4l2_g_crop(struct file *file, void *fh,
 				struct v4l2_crop *a)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+	struct nx_vip_control *ctrl = video_drvdata(file);// (struct nx_vip_control *) fh;
 
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE &&
 		a->type != V4L2_BUF_TYPE_VIDEO_OVERLAY)
@@ -1335,10 +1236,10 @@ static int nx_vip_v4l2_g_crop(struct file *filp, void *fh,
 	return 0;
 }
 
-static int nx_vip_v4l2_s_crop(struct file *filp, void *fh,
+static int nx_vip_v4l2_s_crop(struct file *file, void *fh,
 				struct v4l2_crop *a)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
 #if 0
 	struct nx_vip_camera_ex *cam = ctrl->cam_ex;
 
@@ -1369,10 +1270,10 @@ static int nx_vip_v4l2_s_crop(struct file *filp, void *fh,
 	return 0;
 }
 
-static int nx_vip_v4l2_s_parm(struct file *filp, void *fh,
+static int nx_vip_v4l2_s_parm(struct file *file, void *fh,
 				struct v4l2_streamparm *a)
 {
-	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
 
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
@@ -1392,10 +1293,10 @@ static int nx_vip_v4l2_s_parm(struct file *filp, void *fh,
 	return 0;
 }
 
-static int nx_vip_v4l2_g_parm(struct file *filp, void *fh,
+static int nx_vip_v4l2_g_parm(struct file *file, void *fh,
 				struct v4l2_streamparm *a)
 {
-//	struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
+	struct nx_vip_control *ctrl = video_drvdata(file);//(struct nx_vip_control *) fh;
 
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
@@ -1424,9 +1325,9 @@ struct i2c_struc {
 static long nx_vip_v4l2_default(struct file *file, void *fh,
 					int cmd, void *arg)
 {
-#if 0
-    struct nx_vip_control *ctrl = (struct nx_vip_control *) fh;
 
+    struct nx_vip_control *ctrl = video_drvdata(file);// (struct nx_vip_control *) fh;
+#if 0
     //printk("V4L2 default ioctl cmd = %x %x\n", cmd, VIDIOC_I2C_CTRL_W);
     if (cmd == VIDIOC_I2C_CTRL_R) {
         struct i2c_struc *i2cs= arg;

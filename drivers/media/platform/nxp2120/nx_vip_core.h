@@ -2,6 +2,7 @@
  *
  * Header file for Nexell's camera(VIP) driver.
  * Copyright (c) 2019 I4VINE
+ * All right reserved by Juyoung Ryu <jyryu@i4vine.com>
  *
  * Copyright (c) 2011 MOSTiTECH co., ltd.
  * All right reserved by Seungwoo Kim
@@ -28,8 +29,7 @@
 #include <media/videobuf2-dma-contig.h>
 
 #endif
-//#include <mach/devices.h>
-//#include <mach/platform.h>
+
 
 /*
  * PIXEL FORMAT GUIDE
@@ -106,39 +106,6 @@
 #define NX_VIP_FLAG_SCALER_IRQ	0x1000
 #define NX_VIP_SCALER_MASK		0xf000
 
-#if 0
-#define UNMASK_STATUS(x)        (x->flag &= ~NX_VIP_STA_MASK)
-#define UNMASK_USAGE(x)         (x->flag &= ~NX_VIP_USE_MASK)
-#define UNMASK_IRQ(x)           (x->flag &= ~NX_VIP_IRQ_MASK)
-#define UNMASK_SCALER(x)		(x->flag &= ~NX_VIP_SCALER_MASK)
-
-#define FSET_RUNNING(x)         UNMASK_STATUS(x); (x->flag |= NX_VIP_FLAG_RUNNING)
-#define FSET_STOP(x)            UNMASK_STATUS(x); (x->flag |= NX_VIP_FLAG_STOP)
-#define FSET_HANDLE_IRQ(x)      UNMASK_STATUS(x); (x->flag |= NX_VIP_FLAG_HANDLE_IRQ)
-
-#define FSET_SCALER_IRQ(x)      UNMASK_SCALER(x); (x->flag |= NX_VIP_FLAG_SCALER_IRQ)
-
-#define FSET_PREVIEW(x)         UNMASK_USAGE(x); (x->flag |= NX_VIP_FLAG_PREVIEW)
-#define FSET_CAPTURE(x)         UNMASK_USAGE(x); (x->flag |= NX_VIP_FLAG_CAPTURE)
-
-#define FSET_IRQ_NORMAL(x)      UNMASK_IRQ(x); (x->flag |= NX_VIP_FLAG_IRQ_NORMAL)
-#define FSET_IRQ_X(x)           UNMASK_IRQ(x); (x->flag |= NX_VIP_FLAG_IRQ_X)
-#define FSET_IRQ_Y(x)           UNMASK_IRQ(x); (x->flag |= NX_VIP_FLAG_IRQ_Y)
-#define FSET_IRQ_LAST(x)        UNMASK_IRQ(x); (x->flag |= NX_VIP_FLAG_IRQ_LAST)
-
-#define IS_RUNNING(x)           (x->flag & NX_VIP_FLAG_RUNNING)
-#define IS_IRQ_HANDLING(x)      (x->flag & NX_VIP_FLAG_HANDLE_IRQ)
-
-#define IS_SCALER_HANDLING(x)   (x->flag & NX_VIP_FLAG_SCALER_IRQ)
-
-#define IS_PREVIEW(x)           (x->flag & NX_VIP_FLAG_PREVIEW)
-#define IS_CAPTURE(x)           (x->flag & NX_VIP_FLAG_CAPTURE)
-
-#define IS_IRQ_NORMAL(x)        (x->flag & NX_VIP_FLAG_IRQ_NORMAL)
-#define IS_IRQ_X(x)         (x->flag & NX_VIP_FLAG_IRQ_X)
-#define IS_IRQ_Y(x)         (x->flag & NX_VIP_FLAG_IRQ_Y)
-#define IS_IRQ_LAST(x)          (x->flag & NX_VIP_FLAG_IRQ_LAST)
-#endif
 #define PAT_CB(x)           ((x >> 8) & 0xff)
 #define PAT_CR(x)           (x & 0xff)
 
@@ -520,102 +487,9 @@ struct nx_vip_camera_ex {
     int				def_height;
     int             max_width;
     int             max_height;
-#if 0    
-    unsigned int	cur_pixformat;
-    int				bpp;
-    int				flip_flag;
-    int				enable;
-    //struct nx_vip_window_offset offset;
-    struct nx_vip_polarity  polarity;
-    int             initialized;
 
-    int				cur_brightness;
-    int				cur_gain;
-    int				cur_aemode;
-    int				cur_exposure;
-
-    struct i2c_client *client;
-    int				priv_data;
-
-    int             (*i2c_read)(struct i2c_client *client,int addr, int *val);
-    int             (*i2c_write)(struct i2c_client *client,int addr, int val);
-#endif
 };
 
-#if 0
-/*
- * inline function to get v4l2_subdev to nx_vip_camera structure.
- *
-*/
-static inline struct nx_vip_camera *to_vip_cam(struct v4l2_subdev *sd)
-{
-	return container_of(sd, struct nx_vip_camera, sd);
-}
-#endif
-
-/*
- * struct nx_vip_in_frame: abstraction for frame data
- * @addr:       address information of frame data
- * @width:      width
- * @height:     height
- * @offset:     dma offset
- * @format:     pixel format
- * @planes:     YCBCR planes (1, 2 or 3)
- * @order_1p        1plane YCBCR order
- * @order_2p:       2plane YCBCR order
- * @flip:       flip mode
-*/
-struct nx_vip_in_frame {
-    u32             buf_size;
-    struct nx_vip_frame_addr    addr;
-    int             width;
-    int             height;
-    struct nx_vip_dma_offset    offset;
-    enum nx_vip_format_t        format;
-    int             planes;
-    enum nx_vip_order422_in_t   order_1p;
-    enum nx_vip_2plane_order_t  order_2p;
-    enum nx_vip_flip_t      flip;
-};
-
-/*
- * struct nx_vip_out_frame: abstraction for frame data
- * @cfn:        current frame number
- * @buf_size:       1 buffer size
- * @addr[]:     address information of frames
- * @nr_frams:       how many output frames used
- * @skip_frames:    current streamed frames (for capture)
- * @width:      width
- * @height:     height
- * @offset:     offset for output dma
- * @format:     pixel format
- * @planes:     YCBCR planes (1, 2 or 3)
- * @order_1p        1plane YCBCR order
- * @order_2p:       2plane YCBCR order
- * @scan:       output scan method (progressive, interlace)
- * @flip:       flip mode
- * @effect:     output effect
-*/
-struct nx_vip_out_frame {
-    int             cfn;
-    u32             buf_size;
-    struct nx_vip_frame_addr    addr[NX_VIP_MAX_FRAMES];
-    int             nr_frames;
-    int             skip_frames[NX_VIP_MAX_FRAMES];
-    int				startx, starty;
-    int             width;
-    int             height;
-    int				scw;
-    int				sch;
-    struct nx_vip_dma_offset    offset;
-    enum nx_vip_format_t        format;
-    int             planes;
-    enum nx_vip_order422_out_t  order_1p;
-    enum nx_vip_2plane_order_t  order_2p;
-    enum nx_vip_scan_t      scan;
-    enum nx_vip_flip_t      flip;
-    struct nx_vip_effect        effect;
-};
 
 /*
  * struct nx_vip_v4l2
@@ -855,17 +729,17 @@ struct nx_vip_control {
 #endif
 	struct v4l2_format fmt;	
     /* input */
-    enum nx_vip_path_in_t     in_type;
+ //   enum nx_vip_path_in_t     in_type;
     //struct nx_vip_camera      *in_cam;
     //struct v4l2_subdev        *cam_subdev;
-    struct nx_vip_in_frame    in_frame;
+   // struct nx_vip_in_frame    in_frame;
 
     unsigned int             gpio_base; /* Not used as not DUAL CAMERA configuration */
     //struct nx_vip_camera      *in_cam2;
 
     /* output */
-    enum nx_vip_path_out_t   out_type;
-    struct nx_vip_out_frame  out_frame;
+   // enum nx_vip_path_out_t   out_type;
+   // struct nx_vip_out_frame  out_frame;
     struct nx_video_frame	cap_frame;
     int                      buf_index;
     int                      pwrdn;
@@ -970,11 +844,11 @@ extern int nx_vip_set_output_frame(struct nx_vip_control *ctrl, struct v4l2_pix_
 extern void nx_vip_start_vip(struct nx_vip_control *ctrl);
 extern void nx_vip_stop_vip(struct nx_vip_control *ctrl);
 extern void nx_vip_restart_vip(struct nx_vip_control *ctrl);
-extern int nx_vip_change_resolution(struct nx_vip_control *ctrl, enum nx_vip_cam_res_t res);
+/*extern int nx_vip_change_resolution(struct nx_vip_control *ctrl, enum nx_vip_cam_res_t res);
 extern int nx_vip_alloc_output_memory(struct nx_vip_control *ctrl);
 extern void nx_vip_free_output_memory(struct nx_vip_out_frame *info);
+extern void nx_vip_set_output_address(struct nx_vip_control *ctrl);*/
 extern void nx_vip_free_frame_memory(struct nx_video_frame *frame);
-extern void nx_vip_set_output_address(struct nx_vip_control *ctrl);
 extern int nx_vip_alloc_frame_memory(struct nx_vip_control *ctrl);
 
 extern int _set_plane_size(struct nx_video_frame *frame, unsigned int sizes[]);
