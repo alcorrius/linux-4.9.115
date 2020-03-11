@@ -60,9 +60,9 @@ obj-$(CONFIG_VIDEO_XILINX)		+= xilinx/
 obj-$(CONFIG_VIDEO_NEXELL)		+= nexell/
 obj-$(CONFIG_VIDEO_NEXELL_NXS)		+= nexell/
 
-obj-$(CONFIG_VIDEO_NEXELL_CODEC)	+= nxp-vpu/
+#obj-$(CONFIG_VIDEO_NEXELL_CODEC)	+= nxp-vpu/
 
-obj-$(CONFIG_NEW_V4L2_NEXELL)	+= nexell_new/
+#obj-$(CONFIG_NEW_V4L2_NEXELL)	+= nexell_new/
 
 obj-$(CONFIG_VIDEO_NXP2120)		+= nxp2120/
 
